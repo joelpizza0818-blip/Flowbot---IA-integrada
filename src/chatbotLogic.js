@@ -11,14 +11,38 @@ const MODELS = [
 const SYSTEM_PROMPT = import.meta.env.VITE_SYSTEM_PROMPT|| `eres FLOWBOT una IA de tareas basicas responde de manera corta usando Markdown y negritas para enfatizar puntos clave, responde en broma si el usuario bromea y de forma grosera si el usuario es grosero`
 
 export async function fetchGeminiAI(userMessage) {
+  // 1. Intentar usar el Proxy del servidor si NO estamos en GitHub Pages
+  const isGitHubPages = window.location.hostname.includes('github.io');
+  
+  if (!isGitHubPages) {
+    try {
+      console.log(`[FlowBot AI] Intentando comunicación vía Proxy Seguro...`);
+      const response = await fetch('/api/flowbot-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userMessage, systemPrompt: SYSTEM_PROMPT })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text.trim();
+      }
+      console.warn("[FlowBot AI] Proxy falló o no disponible. Reintentando vía directa...");
+    } catch (err) {
+      console.warn("[FlowBot AI] Error conectando con el Proxy:", err.message);
+    }
+  }
+
+  // 2. Fallback: Comunicación Directa (Original)
   if (!API_KEY) {
-    console.error("[FlowBot] VITE_GEMINI_API_KEY no esta definida.");
+    console.error("[FlowBot] VITE_GEMINI_API_KEY no esta definida para comunicación directa.");
     return null;
   }
 
   for (const model of MODELS) {
     try {
-      console.log(`[FlowBot AI] Intentando modelo: ${model}`);
+      console.log(`[FlowBot AI] Intentando modelo vía directa: ${model}`);
 
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`,
@@ -46,62 +70,30 @@ export async function fetchGeminiAI(userMessage) {
       );
 
       const data = await res.json();
-
       if (!res.ok) {
-        const errorMsg  = data?.error?.message || "Error desconocido";
-
-        if (res.status === 429) {
-          console.warn(`[${model}] Rate limit alcanzado. Probando siguiente modelo...`);
-          continue;
-        }
-
-        if (res.status === 400) {
-          console.warn(`[${model}] Solicitud invalida: ${errorMsg}`);
-          continue;
-        }
-
-        if (res.status === 403 || res.status === 401) {
-          console.error(`[${model}] Error de autenticacion: ${errorMsg}`);
-          return null;
-        }
-
-        if (res.status === 404) {
-          console.warn(`[${model}] Modelo no encontrado o retirado. Probando siguiente...`);
-          continue;
-        }
-
-        console.warn(`[${model}] HTTP ${res.status}: ${errorMsg}`);
+        if (res.status === 429) { continue; }
+        if (res.status === 400) { continue; }
+        if (res.status === 403 || res.status === 401) { return null; }
         continue;
       }
 
       const candidate = data?.candidates?.[0];
-
-      if (!candidate) {
-        console.warn(`[${model}] Sin candidatos en la respuesta.`);
-        continue;
-      }
+      if (!candidate) continue;
 
       const finishReason = candidate?.finishReason;
       if (finishReason === "SAFETY" || finishReason === "RECITATION") {
-        console.warn(`[${model}] Respuesta bloqueada por seguridad (${finishReason}).`);
         return "No puedo responder a esa consulta por politicas de seguridad.";
       }
 
       const text = candidate?.content?.parts?.[0]?.text;
-
-      if (text && text.trim().length > 0) {
-        console.log(`[FlowBot AI] Respondiendo con modelo: ${model}`);
-        return text.trim();
-      }
-
-      console.warn(`[${model}] Respuesta vacia o sin texto.`);
+      if (text && text.trim().length > 0) return text.trim();
 
     } catch (err) {
-      console.warn(`[${model}] Error de red o parsing: ${err.message}`);
+      console.warn(`[${model}] Error de red directa: ${err.message}`);
     }
   }
 
-  console.error("[FlowBot AI] Todos los modelos fallaron.");
+  console.error("[FlowBot AI] Todos los métodos de comunicación fallaron.");
   return null;
 }
 
