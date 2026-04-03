@@ -9,6 +9,7 @@ function getTimeString() {
   return new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 }
 
+
 function createWelcomeMessage() {
   return {
     id: 0,
@@ -26,6 +27,9 @@ function App() {
   const [messages, setMessages] = useState([createWelcomeMessage()]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isEncrypting, setIsEncrypting] = useState(false);
+  const [timerAlert, setTimerAlert] = useState(null); // { label, total, remaining }
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 768);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -34,6 +38,14 @@ function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    if (timerAlert) {
+      const handleGlobalInteraction = () => setTimerAlert(null);
+      window.addEventListener('keydown', handleGlobalInteraction);
+      return () => window.removeEventListener('keydown', handleGlobalInteraction);
+    }
+  }, [timerAlert]);
 
   function handleSend() {
     const trimmed = input.trim();
@@ -90,6 +102,39 @@ function App() {
             setTimeout(() => handleClearChat(), 500);
           } else if (action === 'toggle_sidebar') {
             setSidebarOpen((prev) => !prev);
+          } else if (action === 'system_scan') {
+            setIsScanning(true);
+            setTimeout(() => setIsScanning(false), 5000);
+          } else if (action === 'data_encryption') {
+            setIsEncrypting(true);
+            setTimeout(() => setIsEncrypting(false), 5000);
+          } else if (action === 'set_timer') {
+            console.log("Timer action triggered!", actionObj);
+            const rawQuery = actionObj.query || '';
+            const numMatch = rawQuery.match(/\d+/);
+            let seconds = numMatch ? parseInt(numMatch[0], 10) : 10;
+            
+            // Soporte básico para minutos
+            if (rawQuery.toLowerCase().includes('minuto')) {
+              seconds *= 60;
+            }
+            
+            const label = rawQuery || 'Tarea programada';
+            console.log(`Starting timer for ${seconds} seconds with label: ${label}`);
+            
+            // Iniciar el temporizador real con actualización de estado
+            const timerId = setInterval(() => {
+              setTimerAlert((prev) => {
+                if (!prev || prev.remaining <= 1) {
+                  clearInterval(timerId);
+                  return prev ? { ...prev, remaining: 0, finished: true } : null;
+                }
+                return { ...prev, remaining: prev.remaining - 1 };
+              });
+            }, 1000);
+
+            setTimerAlert({ label, remaining: seconds, total: seconds, finished: false });
+            console.log("setTimerAlert was called with", { label, remaining: seconds });
           }
         });
       }
@@ -117,6 +162,49 @@ function App() {
 
   return (
     <div className="app-container">
+      {isScanning && (
+        <div className="scanning-overlay">
+          <div className="scanning-grid"></div>
+          <div className="scanning-laser"></div>
+        </div>
+      )}
+      {isEncrypting && (
+        <div className="encryption-overlay">
+          <div className="encryption-shield"></div>
+          <div className="encryption-data-particles"></div>
+        </div>
+      )}
+
+      {timerAlert && (
+        <div className="timer-modal-overlay" onClick={() => setTimerAlert(null)}>
+          <div className="timer-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="timer-modal-header">
+              <div className={`timer-status-icon ${timerAlert.finished ? 'status-finished' : 'status-running'}`}>
+                <IntentIcon name={timerAlert.finished ? 'check' : 'automatizar'} size={24} />
+              </div>
+              <h3>{timerAlert.finished ? '¡Temporizador Finalizado!' : 'Temporizador Activo'}</h3>
+            </div>
+            
+            <div className="timer-display">
+              {!timerAlert.finished && (
+                <div className="timer-countdown">
+                  <span className="timer-number">{timerAlert.remaining || timerAlert.total}</span>
+                  <span className="timer-unit">seg</span>
+                </div>
+              )}
+              {timerAlert.finished && <div className="timer-complete-text">COMPLETADO</div>}
+            </div>
+
+            <div className="timer-label">{timerAlert.label}</div>
+            
+            <div className="timer-modal-footer">
+              <button className="timer-close-btn" onClick={() => setTimerAlert(null)}>
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-header">
           <FlowLogo size={36} />

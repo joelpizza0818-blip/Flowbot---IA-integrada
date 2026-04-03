@@ -199,16 +199,12 @@ const intentGroups = [
     iconName: 'informar',
     color: '#ffa502',
     keywords: [
-        'borra eso','borra eso ahí','elimínalo','elimínalo todo',
-  'quita eso','quita eso de ahí','saca eso',
   'dame lu','da la lu', 'dime algo de eso',
-  'desaparece eso','hazlo desaparecer',
-  'no quiero eso','eso no va','eso fuera',
-  'bórralo completo','elimínalo completo',
-  'resetéalo','resetealo','reinicia eso',
-  'déjalo limpio','limpia eso',
-  'quita todo','vacía eso','vacía todo',
-  'quita esa vaina','borra eso ahora',
+  'dame info','cuéntame más','qué hay de nuevo',
+  'explica esto','detalle de','info sobre',
+  'dame una luz','ilumíname','qué pasó con',
+  'estado de','situación de','reporte de',
+  'resumen', 'estadísticas', 'estadisticas',
       'informar', 'reportar', 'notificar', 'comunicar', 'avisar', 'alertar',
       'advertir', 'señalar', 'indicar', 'mencionar', 'describir', 'explicar',
       'detallar', 'especificar', 'documentar', 'registrar', 'anotar',
@@ -400,14 +396,12 @@ const intentGroups = [
       'autorizar', 'validar', 'verificar identidad', 'contraseña', 'password',
       'token', 'sesión', 'login', 'logout', 'cerrar sesión', 'firewall',
       'antivirus', 'malware', 'virus', 'amenaza', 'vulnerabilidad', 'exploit',
-      'brecha', 'ataque', 'hackeo', 'intrusión', 'phishing', 'spam',
-      'bloquear', 'banear', 'restringir', 'limitar', 'permisos', 'roles',
-      'acceso', 'privilegios', 'auditoría', 'log seguridad', 'backup',
-      'respaldo', 'copia seguridad', 'recuperación', 'contingencia',
       '2fa', 'mfa', 'ssl', 'https', 'certificado', 'oauth',
       'protección de datos', 'seguridad informática', 'escaneo de virus',
       'bloqueo de IP', 'control de acceso', 'gestión de identidad',
       'auditar sistema', 'reforzar defensas', 'blindaje total',
+      'escaneo', 'revisar virus', 'analizar seguridad', 'escanea', 'scan',
+      'vulnerabilidad', 'amenaza', 'cifrar', 'encriptar', 'blindaje',
     ],
     responses: [
       '**Protocolo de seguridad activado.** Analizando posibles vulnerabilidades y reforzando defensas.',
@@ -456,12 +450,12 @@ const intentGroups = [
       'ciclo', 'recurrente', 'periódico', 'programado', 'agendado',
       'temporizador', 'timer', 'trigger', 'disparador', 'evento',
       'hook', 'callback', 'listener', 'watcher', 'monitor automático',
-      'integración', 'API', 'endpoint', 'servicio', 'microservicio',
-      'orquestación', 'cadena', 'secuencia', 'rutina', 'procedimiento',
-      'auto', 'robot', 'tareas repetitivas', 'eficiencia', 'flujo',
       'automatico', 'programacion', 'disparadores', 'secuenciador',
       'flujo automático', 'proceso masivo', 'operación en lote',
       'integración contínua', 'despliegue automático', 'auto-gestión',
+      'automatiza', 'automatizar', 'temporizador', 'timer', 'avisame', 'alarma', 'recuerda',
+      'rutina', 'flujo', 'pipeline', 'workflow', 'agendar', 'programar', 'alerta', 'alarme',
+      'minuto', 'minutos', 'segundos', 'cronómetro', 'cronometro',
     ],
     responses: [
       '**Modo automatización activado.** Diseñando el flujo de trabajo para automatizar tu proceso.',
@@ -652,6 +646,17 @@ const decisionRules = [
   },
   {
     intentId: 'informar',
+    triggerKeywords: ['reporte', 'informe', 'estadísticas', 'estadisticas', 'resumen', 'notificar', 'documentar'],
+    action: 'generate_report',
+    queryExtraction: true,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: 'Generando reporte detallado del sistema.',
+    priority: 40,
+  },
+  {
+    intentId: 'informar',
     triggerKeywords: null,
     action: 'respond_only',
     queryExtraction: false,
@@ -674,6 +679,61 @@ const decisionRules = [
   },
   {
     intentId: 'seguridad',
+    triggerKeywords: ['escaneo', 'revisar virus', 'analizar seguridad', 'escanea', 'scan', 'vulnerabilidad', 'amenaza'],
+    action: 'system_scan',
+    queryExtraction: false,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: 'Iniciando escaneo profundo de seguridad...',
+    priority: 50,
+  },
+  {
+    intentId: 'seguridad',
+    triggerKeywords: ['cifrar', 'encriptar', 'proteger datos', 'blindaje', 'contraseña', 'password', 'token', 'autenticar'],
+    action: 'data_encryption',
+    queryExtraction: true,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: 'Cifrando datos y reforzando protección de identidad.',
+    priority: 40,
+  },
+  {
+    intentId: 'seguridad',
+    triggerKeywords: null,
+    action: 'respond_only',
+    queryExtraction: false,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: null,
+    priority: 0,
+  },
+  {
+    intentId: 'automatizar',
+    triggerKeywords: ['rutina', 'flujo', 'pipeline', 'automatiza', 'automatizar', 'proceso', 'workflow'],
+    action: 'create_routine',
+    queryExtraction: true,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: 'Diseñando flujo de trabajo automatizado.',
+    priority: 40,
+  },
+  {
+    intentId: 'automatizar',
+    triggerKeywords: ['temporizador', 'avisame', 'alarma', 'timer', 'recuerda', 'programar', 'agendar', 'alerta', 'alarme', 'cronometro', 'cronómetro'],
+    action: 'set_timer',
+    queryExtraction: true,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: 'Programando tarea y temporizador de alerta.',
+    priority: 50,
+  },
+  {
+    intentId: 'automatizar',
     triggerKeywords: null,
     action: 'respond_only',
     queryExtraction: false,
@@ -1014,7 +1074,7 @@ function extractQueryForIntent(userMessage, intentId) {
   const rawCandidate = keywordBounds ? userMessage.slice(keywordBounds.end) : userMessage;
   const query = trimSearchQuery(rawCandidate);
 
-  return query.length >= 2 ? query : '';
+  return query ? query : '';
 }
 
 function getConversationalResponse(userMessage) {
@@ -1048,22 +1108,31 @@ export function resolveActions(userMessage) {
   if (intents.length === 0) return [];
 
   const actions = [];
-  const handledIntents = new Set();
+  const handledActions = new Set();
+  const intentsWithSpecificAction = new Set();
 
   for (const rule of decisionRules) {
-    if (handledIntents.has(rule.intentId)) continue;
+    // Evitar duplicar la misma acción exacta en un mensaje
+    if (handledActions.has(rule.action)) continue;
 
     const matchedIntent = intents.find((intent) => intent.id === rule.intentId);
     if (!matchedIntent) continue;
 
     let triggered = false;
     if (rule.triggerKeywords === null) {
+      // Si es un fallback (trigKeywords null) y la intención ya activó algo específico, ignorar
+      if (intentsWithSpecificAction.has(rule.intentId)) continue;
       triggered = true;
     } else {
       triggered = matchKeywords(trimmed, rule.triggerKeywords).length > 0;
     }
 
     if (!triggered) continue;
+
+    if (rule.action === 'respond_only') {
+      intentsWithSpecificAction.add(rule.intentId);
+      continue;
+    }
 
     const actionResult = {
       action: rule.action,
@@ -1084,13 +1153,9 @@ export function resolveActions(userMessage) {
       }
     }
 
-    if (rule.action === 'respond_only') {
-      handledIntents.add(rule.intentId);
-      continue;
-    }
-
     actions.push(actionResult);
-    handledIntents.add(rule.intentId);
+    handledActions.add(rule.action);
+    intentsWithSpecificAction.add(rule.intentId);
   }
 
   return actions;

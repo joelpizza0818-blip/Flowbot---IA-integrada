@@ -105,6 +105,46 @@ const ACTION_CONFIG = {
     noQueryDescription: 'Vaciando la conversación y reiniciando el id de mensajes...',
     colorClass: 'action-system',
   },
+  system_scan: {
+    iconName: 'seguridad',
+    title: 'Análisis de Red',
+    noQueryTitle: 'Escaneo de Seguridad',
+    btnLabel: null,
+    noQueryDescription: 'Realizando búsqueda de amenazas y vulnerabilidades...',
+    colorClass: 'action-security',
+  },
+  data_encryption: {
+    iconName: 'seguridad',
+    title: 'Encriptado',
+    noQueryTitle: 'Cifrado de Datos',
+    btnLabel: null,
+    noQueryDescription: 'Protegiendo información sensible con algoritmos avanzados...',
+    colorClass: 'action-security',
+  },
+  create_routine: {
+    iconName: 'automatizar',
+    title: 'Nuevo Flujo',
+    noQueryTitle: 'Diseño de Rutina',
+    btnLabel: null,
+    noQueryDescription: 'Creando secuencia de tareas automatizadas...',
+    colorClass: 'action-automation',
+  },
+  set_timer: {
+    iconName: 'automatizar',
+    title: 'Programación',
+    noQueryTitle: 'Temporizador Activo',
+    btnLabel: null,
+    noQueryDescription: 'Configurando alerta y recordatorio en el sistema...',
+    colorClass: 'action-automation',
+  },
+  generate_report: {
+    iconName: 'informar',
+    title: 'Reporte Sistema',
+    noQueryTitle: 'Generando Informe',
+    btnLabel: null,
+    noQueryDescription: 'Recopilando métricas y estadísticas de uso...',
+    colorClass: 'action-report',
+  },
 };
 
 function ActionCard({ action }) {
