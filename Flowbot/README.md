@@ -32,6 +32,29 @@ El sistema está entrenado para reconocer y actuar sobre los siguientes grupos d
 > [!TIP]
 > **Potencia de Detección:** El motor local ha sido expandido con más de **500 variantes lingüísticas**, incluyendo tecnicismos, coloquialismos y términos en inglés, garantizando una respuesta inmediata para casi cualquier forma de solicitar una tarea.
 
+## Estructura del Proyecto
+
+```text
+Flowbot/
+|── dist/                   # Archivos de producción
+├── public/                 # Archivos estáticos
+│   ├── favicon.svg         # Icono interactivo
+│   └── icons.svg           # Sprites SVG
+├── src/                    # Código fuente principal
+│   ├── assets/             # Imágenes y SVGs de la interfaz
+│   ├── components/         # Componentes React (FlowLogo, ChatMessage, etc.)
+│   ├── App.jsx             # Vista principal y gestión de estado
+│   ├── App.css             # Estilos de la aplicación y animaciones cyber
+│   ├── chatbotLogic.js     # Lógica central, intenciones y conexión Gemini
+│   ├── index.css           # Estilos base
+│   └── main.jsx            # Punto de entrada de React
+├── .env                    # Variables de entorno (VITE_GEMINI_API_KEY)
+├── eslint.config.js        # Reglas de linting
+├── index.html              # Plantilla raíz
+├── package.json            # Configuración de Node.js
+└── vite.config.js          # Configuración del servidor/bundler
+```
+
 ## Tecnologías Utilizadas
 
 -   **Frontend:** React 19, Vite 8, Modern CSS (Variables y Animaciones).
