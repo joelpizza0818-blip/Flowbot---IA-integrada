@@ -1,0 +1,1106 @@
+/**
+ * FlowBot - Motor de detección de intenciones con capa de decisiones
+ *
+ * Arquitectura de 3 capas:
+ *   1. Intent Groups     → detectan intenciones por palabra clave
+ *   2. Decision Rules    → controlan qué acción ejecutar por cada intención/keyword
+ *   3. Response Builder  → genera la respuesta final del bot
+ */
+
+// ---------------------------------------------------------------------------
+// 1. INTENT GROUPS
+// ---------------------------------------------------------------------------
+
+const intentGroups = [
+  {
+    id: 'visualizar',
+    name: 'Visualizar',
+    iconName: 'visualizar',
+    color: '#00d4ff',
+    keywords: [
+        'ver eso','ver eso ahí','déjame ver','dejame ver','quiero ver',
+  'muéstrame','muestrame','enséñame eso','enseñame eso',
+  'quiero ver eso','quiero visualizar','quiero revisar',
+  'ver detalles','ver info','ver información',
+  'ver datos','ver resultados','ver reporte',
+  'abre eso','abre eso ahí','abre eso pa ver',
+  'pon eso','pon eso ahí','carga eso',
+  'muéstralo','muestralo','enséñalo','enseñalo',
+  'dame vista','vista previa','preview',
+  'ver pantalla','ver dashboard','ver resumen',
+  'quiero un overview','muéstrame el overview',
+  'quiero ver un grafico','ver gráfica','ver grafico',
+  'ver tabla','ver lista','ver mapa',
+  'ver eso en video','busca video de eso',
+  'quiero tutorial de eso','pon un tutorial',
+      'ver', 'visualizar', 'mostrar', 'analizar', 'inspeccionar', 'observar',
+      'revisar', 'explorar', 'examinar', 'consultar', 'mirar', 'chequear',
+      'comprobar', 'verificar', 'detectar', 'descubrir', 'identificar',
+      'reconocer', 'escanear', 'monitorear', 'rastrear', 'supervisar',
+      'contemplar', 'estudiar', 'investigar', 'indagar', 'previsualizar',
+      'desplegar', 'presentar', 'exhibir', 'enseñar', 'abrir', 'cargar',
+      'renderizar', 'proyectar', 'listar', 'detallar', 'desglosar',
+      'panorámica', 'resumen', 'overview', 'dashboard', 'vista',
+      'pantalla', 'reporte', 'informe', 'gráfico', 'tabla', 'mapa',
+      'ver video', 'tutorial', 'reproducir', 'video', 'youtube', 'ver tutorial',
+    ],
+    responses: [
+      '**Modo Visualización activado.** Estoy procesando tu solicitud para mostrar la información relevante.',
+      '**Entendido.** Preparando la vista de datos que necesitas.',
+      '**Visualización en proceso.** Analizando los datos para presentarlos de la forma más clara posible.',
+    ],
+    details:
+      'Este grupo se activa cuando el usuario quiere **ver, analizar o consultar información**. Incluye acciones como monitorear dashboards, revisar reportes, explorar datos y generar vistas previas. Si detecto una consulta clara, también puedo abrir una búsqueda en el navegador.',
+  },
+  {
+    id: 'eliminar',
+    name: 'Eliminar',
+    iconName: 'eliminar',
+    color: '#ff4757',
+    keywords: [
+        'borra eso','borra eso ahí','elimínalo','elimínalo todo',
+  'quita eso','quita eso de ahí','saca eso',
+  'desaparece eso','hazlo desaparecer',
+  'no quiero eso','eso no va','eso fuera',
+  'bórralo completo','elimínalo completo',
+  'resetéalo','resetealo','reinicia eso',
+  'déjalo limpio','limpia eso',
+  'quita todo','vacía eso','vacía todo',
+  'quita esa vaina','borra esa vaina',
+  'quita eso mmg','borra eso ahora',
+      'eliminar', 'borrar', 'quitar', 'remover', 'suprimir', 'descartar',
+      'deshacer', 'anular', 'cancelar', 'destruir', 'purgar', 'limpiar',
+      'vaciar', 'depurar', 'erradicar', 'extirpar', 'extinguir',
+      'liquidar', 'demoler', 'desmantelar', 'desinstalar', 'desactivar',
+      'deshabilitar', 'revocar', 'invalidar', 'retirar', 'expulsar',
+      'truncar', 'podar', 'recortar', 'drop', 'delete', 'remove',
+      'clear', 'reset', 'wipe', 'flush', 'rollback', 'revertir',
+      'deshacer cambios', 'restaurar original', 'formato fábrica',
+    ],
+    responses: [
+      '**Acción de eliminación detectada.** Por seguridad, confirmo: ¿deseas proceder con la eliminación?',
+      '**Solicitud de borrado recibida.** Recuerda que esta acción puede ser irreversible. ¿Confirmas?',
+      '**Modo eliminación.** Identificando los elementos a remover. Procederé con precaución.',
+    ],
+    details:
+      'Este grupo se activa cuando el usuario quiere **eliminar, borrar o deshacer algo**. Incluye acciones destructivas que requieren confirmación, como purgar datos, desinstalar componentes o revertir cambios.',
+  },
+  {
+    id: 'informar',
+    name: 'Informar',
+    iconName: 'informar',
+    color: '#ffa502',
+    keywords: [
+        'borra eso','borra eso ahí','elimínalo','elimínalo todo',
+  'quita eso','quita eso de ahí','saca eso',
+  'dame lu','da la lu', 'dime algo de eso',
+  'desaparece eso','hazlo desaparecer',
+  'no quiero eso','eso no va','eso fuera',
+  'bórralo completo','elimínalo completo',
+  'resetéalo','resetealo','reinicia eso',
+  'déjalo limpio','limpia eso',
+  'quita todo','vacía eso','vacía todo',
+  'quita esa vaina','borra esa vaina',
+  'quita eso mmg','borra eso ahora',
+      'informar', 'reportar', 'notificar', 'comunicar', 'avisar', 'alertar',
+      'advertir', 'señalar', 'indicar', 'mencionar', 'describir', 'explicar',
+      'detallar', 'especificar', 'documentar', 'registrar', 'anotar',
+      'apuntar', 'catalogar', 'clasificar', 'categorizar', 'etiquetar',
+      'rotular', 'marcar', 'destacar', 'subrayar', 'enfatizar',
+      'resaltar', 'puntualizar', 'aclarar', 'interpretar', 'traducir',
+      'sintetizar', 'resumir', 'condensar', 'simplificar', 'parafrasear',
+      'citar', 'referenciar', 'bibliografía', 'fuente', 'origen', 'nota',
+    ],
+    responses: [
+      '**Modo informativo activado.** Recopilando la información solicitada para generar un reporte completo.',
+      '**Generando informe.** Estoy organizando los datos para presentártelos de forma clara y estructurada.',
+      '**Información en camino.** Procesando tu consulta para brindarte los detalles que necesitas.',
+    ],
+    details:
+      'Este grupo se activa cuando el usuario quiere **obtener información, generar reportes o documentar algo**. Cubre desde notificaciones simples hasta informes detallados y documentación técnica.',
+  },
+  {
+    id: 'crear',
+    name: 'Crear',
+    iconName: 'crear',
+    color: '#2ed573',
+    keywords: [
+        'hazme','hazme eso','créame','creame eso',
+  'quiero crear','quiero hacer','quiero armar',
+  'vamos a crear','vamos a hacer',
+  'genérame','generame eso',
+  'dame uno nuevo','haz uno nuevo',
+  'crea algo','inventa algo',
+  'haz un ejemplo','créame un ejemplo',
+  'escríbeme','escribeme algo',
+  'hazme un código','haz un código',
+  'crea un proyecto','arma algo',
+  'inicia algo nuevo','arranca algo',
+      'crear', 'generar', 'construir', 'fabricar', 'producir', 'desarrollar',
+      'diseñar', 'elaborar', 'componer', 'redactar', 'escribir', 'formular',
+      'inventar', 'innovar', 'idear', 'concebir', 'planificar', 'proyectar',
+      'modelar', 'prototipar', 'bosquejar', 'esbozar', 'trazar', 'dibujar',
+      'ilustrar', 'graficar', 'programar', 'codificar', 'implementar',
+      'instanciar', 'inicializar', 'configurar', 'establecer', 'fundar',
+      'inaugurar', 'lanzar', 'publicar', 'desplegar', 'nuevo', 'nueva',
+      'añadir', 'agregar', 'insertar', 'incorporar', 'incluir', 'sumar',
+      'adjuntar', 'anexar', 'complementar', 'ampliar', 'extender',
+    ],
+    responses: [
+      '**Modo creación activado.** Preparando el entorno para construir lo que necesitas.',
+      '**Listo para crear.** Dime los detalles y comenzaré a generar tu solicitud.',
+      '**Iniciando proceso de creación.** Diseñando la estructura base para tu nuevo elemento.',
+    ],
+    details:
+      'Este grupo se activa cuando el usuario quiere **crear, generar o construir algo nuevo**. Abarca desde escribir documentos y código hasta diseñar prototipos, lanzar proyectos y agregar nuevos elementos.',
+  },
+  {
+    id: 'modificar',
+    name: 'Modificar',
+    iconName: 'modificar',
+    color: '#eccc68',
+    keywords: [
+        'cambia eso','cambia eso ahí',
+  'edita eso','edita eso rápido',
+  'modifica eso','ajusta eso',
+  'arregla eso','arregla eso ahí',
+  'eso está mal','corrige eso',
+  'mejóralo','mejoralo',
+  'optimiza eso','ponlo mejor',
+  'hazlo mejor','hazlo más limpio',
+  'reorganiza eso','ordena eso',
+  'ponlo bonito','dale estilo',
+  'quita eso y pon esto',
+  'cámbialo por esto','sustituye eso',
+      'modificar', 'editar', 'cambiar', 'actualizar', 'alterar', 'transformar',
+      'convertir', 'adaptar', 'ajustar', 'calibrar', 'afinar', 'optimizar',
+      'mejorar', 'perfeccionar', 'refinar', 'pulir', 'corregir', 'enmendar',
+      'rectificar', 'reparar', 'arreglar', 'solucionar', 'resolver', 'fixear',
+      'parchear', 'patch', 'update', 'upgrade', 'migrar', 'refactorizar',
+      'reestructurar', 'reorganizar', 'reordenar', 'renombrar', 'reasignar',
+      'reubicar', 'mover', 'trasladar', 'intercambiar', 'sustituir',
+      'reemplazar', 'permutar', 'rotar', 'voltear', 'invertir', 'escalar',
+      'redimensionar', 'ampliar', 'reducir', 'comprimir', 'expandir',
+    ],
+    responses: [
+      '**Modo edición activado.** Identificando los elementos a modificar según tu solicitud.',
+      '**Preparando modificaciones.** Analizando la estructura actual para aplicar los cambios necesarios.',
+      '**Cambios en proceso.** Optimizando y adaptando según tus especificaciones.',
+    ],
+    details:
+      'Este grupo se activa cuando el usuario quiere **editar, actualizar o mejorar algo existente**. Incluye correcciones, optimizaciones, migraciones, refactorizaciones y cualquier tipo de transformación.',
+  },
+  {
+    id: 'buscar',
+    name: 'Buscar',
+    iconName: 'buscar',
+    color: '#7bed9f',
+    keywords: [
+        'búscame','buscame eso',
+  'busca eso','búscalo',
+  'encuéntrame','encuentrame eso',
+  'quiero buscar','quiero encontrar',
+  'dónde está','donde esta eso',
+  'localiza eso','ubica eso',
+  'googlea eso','búscalo en google',
+  'investiga eso','averigua eso',
+  'mira a ver','chequea eso',
+  'encuentra info de','busca info de',
+  'qué hay de','que hay de eso',
+      'buscar', 'encontrar', 'localizar', 'ubicar', 'hallar', 'rastrear',
+      'seguir', 'perseguir', 'cazar', 'filtrar', 'seleccionar', 'elegir',
+      'escoger', 'optar', 'preferir', 'comparar', 'contrastar', 'diferenciar',
+      'distinguir', 'separar', 'aislar', 'extraer', 'obtener', 'recuperar',
+      'rescatar', 'descargar', 'importar', 'traer', 'fetch', 'query',
+      'search', 'find', 'lookup', 'scan', 'crawl', 'indexar', 'navegar',
+      'explorar datos', 'minería', 'scraping', 'parsing', 'regex',
+      'coincidencia', 'match', 'patrón', 'criterio', 'condición',
+    ],
+    responses: [
+      '**Búsqueda iniciada.** Escaneando todas las fuentes disponibles para encontrar lo que necesitas.',
+      '**Rastreando información.** Aplicando filtros y criterios para localizar resultados precisos.',
+      '**Motor de búsqueda activo.** Procesando tu consulta en múltiples fuentes de datos.',
+    ],
+    details:
+      'Este grupo se activa cuando el usuario quiere **buscar, filtrar o localizar información específica**. Cubre desde búsquedas simples hasta minería de datos, scraping y consultas complejas con filtros.',
+  },
+  {
+    id: 'enviar',
+    name: 'Enviar',
+    iconName: 'enviar',
+    color: '#70a1ff',
+    keywords: [
+        'mándame','mandame eso','envíame','envíame eso',
+  'quiero enviar','quiero mandar','quiero compartir',
+  'vamos a enviar','vamos a mandar',
+  'dame eso','pásame eso','pásalo',
+  'envía eso','manda eso','comparte eso',
+  'envía el reporte','manda el archivo',
+  'comparte el enlace','comparte el link',
+  'envíalo por correo','mándalo por mail',
+  'envíalo por whatsapp','mándalo por telegram',
+  'envíalo a todos','mándalo a todos',
+  'distribuye eso','reparte eso',
+      'enviar', 'mandar', 'remitir', 'transmitir', 'transferir', 'compartir',
+      'distribuir', 'difundir', 'propagar', 'emitir', 'publicar', 'postear',
+      'subir', 'upload', 'exportar', 'despachar', 'entregar', 'repartir',
+      'asignar', 'delegar', 'derivar', 'reenviar', 'forward', 'redirect',
+      'sync', 'sincronizar', 'push', 'deploy', 'release', 'broadcast',
+      'notificar por email', 'correo', 'mail', 'mensaje', 'sms', 'chat',
+      'ping', 'webhook', 'api call', 'request', 'solicitud', 'petición',
+    ],
+    responses: [
+      '**Preparando envío.** Verificando los datos y el destino antes de transmitir.',
+      '**Envío en proceso.** Estableciendo conexión y transfiriendo la información solicitada.',
+      '**Mensaje preparado.** Configurando los canales de distribución para tu contenido.',
+    ],
+    details:
+      'Este grupo se activa cuando el usuario quiere **enviar, compartir o distribuir información**. Incluye desde mensajes y correos hasta deploys, sincronizaciones y llamadas a APIs externas.',
+  },
+  {
+    id: 'seguridad',
+    name: 'Seguridad',
+    iconName: 'seguridad',
+    color: '#ff6b81',
+    keywords: [
+      'proteger', 'asegurar', 'blindar', 'cifrar', 'encriptar', 'autenticar',
+      'autorizar', 'validar', 'verificar identidad', 'contraseña', 'password',
+      'token', 'sesión', 'login', 'logout', 'cerrar sesión', 'firewall',
+      'antivirus', 'malware', 'virus', 'amenaza', 'vulnerabilidad', 'exploit',
+      'brecha', 'ataque', 'hackeo', 'intrusión', 'phishing', 'spam',
+      'bloquear', 'banear', 'restringir', 'limitar', 'permisos', 'roles',
+      'acceso', 'privilegios', 'auditoría', 'log seguridad', 'backup',
+      'respaldo', 'copia seguridad', 'recuperación', 'contingencia',
+      '2fa', 'mfa', 'ssl', 'https', 'certificado', 'oauth',
+    ],
+    responses: [
+      '**Protocolo de seguridad activado.** Analizando posibles vulnerabilidades y reforzando defensas.',
+      '**Modo seguridad.** Verificando credenciales y configuraciones de protección.',
+      '**Alerta de seguridad procesada.** Escaneando el sistema en busca de amenazas potenciales.',
+    ],
+    details:
+      'Este grupo se activa cuando el usuario menciona temas de **seguridad, protección o autenticación**. Cubre cifrado, gestión de accesos, detección de amenazas, backups y protocolos de seguridad.',
+  },
+  {
+    id: 'ayuda',
+    name: 'Ayuda',
+    iconName: 'ayuda',
+    color: '#a29bfe',
+    keywords: [
+      'ayuda', 'ayudar', 'soporte', 'asistencia', 'guía', 'tutorial',
+      'manual', 'instrucciones', 'pasos', 'explicame', 'explícame',
+      'guiame', 'guíame', 'enseñame', 'enséñame', 'orientame', 'oriéntame',
+      'paso a paso', 'preguntas frecuentes', 'faq', 'documentación', 'docs',
+      'wiki', 'referencia', 'recurso', 'herramienta', 'utilidad',
+      'funcionalidad', 'característica', 'capacidad', 'opción', 'alternativa',
+      'solución', 'cómo usar', 'como usar', 'cómo funciona', 'como funciona',
+      'cómo se hace', 'como se hace', 'centro de ayuda',
+    ],
+    responses: [
+      '**Aquí estoy para ayudarte.** ¿Qué necesitas saber? Puedo guiarte paso a paso.',
+      '**Centro de ayuda FlowBot.** Cuéntame tu duda y te brindaré la asistencia que necesitas.',
+      '**Modo asistencia activado.** Estoy listo para resolver tus preguntas y brindarte soporte.',
+    ],
+    details:
+      'Este grupo se activa cuando el usuario **necesita ayuda, tiene dudas o busca instrucciones**. Incluye tutoriales, documentación, soporte guiado, FAQs y asistencia paso a paso.',
+  },
+  {
+    id: 'automatizar',
+    name: 'Automatizar',
+    iconName: 'automatizar',
+    color: '#1e90ff',
+    keywords: [
+      'automatizar', 'programar tarea', 'scheduler', 'cron', 'bot', 'macro',
+      'script', 'pipeline', 'workflow', 'flujo trabajo', 'proceso',
+      'batch', 'lote', 'masivo', 'bulk', 'repetir', 'iterar', 'loop',
+      'ciclo', 'recurrente', 'periódico', 'programado', 'agendado',
+      'temporizador', 'timer', 'trigger', 'disparador', 'evento',
+      'hook', 'callback', 'listener', 'watcher', 'monitor automático',
+      'integración', 'API', 'endpoint', 'servicio', 'microservicio',
+      'orquestación', 'cadena', 'secuencia', 'rutina', 'procedimiento',
+    ],
+    responses: [
+      '**Modo automatización activado.** Diseñando el flujo de trabajo para automatizar tu proceso.',
+      '**Motor de automatización listo.** Configurando triggers, condiciones y acciones para tu pipeline.',
+      '**Automatización en diseño.** Analizando el proceso para crear una secuencia eficiente y repetible.',
+    ],
+    details:
+      'Este grupo se activa cuando el usuario quiere **automatizar procesos, crear pipelines o configurar tareas programadas**. Incluye workflows, integraciones, hooks, scripts batch y orquestación de servicios.',
+  },
+];
+
+// ---------------------------------------------------------------------------
+// 2. DECISION RULES — Capa central de control
+// ---------------------------------------------------------------------------
+
+/**
+ * Cada regla define:
+ *   intentId         — grupo de intención al que aplica
+ *   triggerKeywords  — si alguna keyword del mensaje matchea, se activa esta regla
+ *   action           — tipo de acción: open_youtube | open_search | background_search | confirm_action | respond_only
+ *   queryExtraction  — ¿extraer query del mensaje?
+ *   urlTemplate      — URL con placeholder {query} (si aplica)
+ *   fallbackUrl      — URL si no hay query (si aplica)
+ *   label            — texto para el botón de acción
+ *   description      — descripción corta para el usuario
+ *   priority         — mayor número = se evalúa primero
+ */
+const decisionRules = [
+  // ── Visualizar: YouTube ────────────────────────────────────────────────
+  {
+    intentId: 'visualizar',
+    triggerKeywords: ['ver video', 'ver tutorial', 'tutorial', 'reproducir', 'video', 'youtube'],
+    action: 'open_youtube',
+    queryExtraction: true,
+    urlTemplate: 'https://www.youtube.com/results?search_query={query}',
+    fallbackUrl: 'https://www.youtube.com/',
+    label: 'Abrir en YouTube',
+    description: 'Se encontró contenido de video. Puedes verlo en YouTube.',
+    priority: 30,
+  },
+
+  // ── Visualizar: Google Search ──────────────────────────────────────────
+  {
+    intentId: 'visualizar',
+    triggerKeywords: [
+      'ver', 'mostrar', 'visualizar', 'consultar', 'explorar', 'examinar',
+      'abrir', 'cargar', 'desplegar', 'presentar', 'exhibir', 'enseñar',
+      'previsualizar', 'renderizar', 'proyectar',
+    ],
+    action: 'open_search',
+    queryExtraction: true,
+    urlTemplate: 'https://www.google.com/search?q={query}',
+    fallbackUrl: 'https://www.google.com/',
+    label: 'Buscar en Google',
+    description: 'Búsqueda preparada. Puedes abrirla en el navegador.',
+    priority: 20,
+  },
+
+  // ── Visualizar: Background (no abre pestaña) ──────────────────────────
+  {
+    intentId: 'visualizar',
+    triggerKeywords: [
+      'analizar', 'monitorear', 'supervisar', 'revisar', 'inspeccionar',
+      'chequear', 'comprobar', 'verificar', 'detectar', 'escanear',
+      'rastrear', 'observar', 'estudiar', 'investigar', 'indagar',
+      'contemplar', 'identificar', 'reconocer', 'descubrir',
+    ],
+    action: 'background_search',
+    queryExtraction: true,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: 'Análisis realizado internamente.',
+    priority: 10,
+  },
+
+  // ── Buscar: Google Search ──────────────────────────────────────────────
+  {
+    intentId: 'buscar',
+    triggerKeywords: [
+      'buscar', 'encontrar', 'localizar', 'ubicar', 'hallar', 'search',
+      'find', 'lookup', 'navegar', 'googlear',
+    ],
+    action: 'open_search',
+    queryExtraction: true,
+    urlTemplate: 'https://www.google.com/search?q={query}',
+    fallbackUrl: 'https://www.google.com/',
+    label: 'Buscar en Google',
+    description: 'Búsqueda preparada. Puedes abrirla en el navegador.',
+    priority: 20,
+  },
+
+  // ── Buscar: Background ────────────────────────────────────────────────
+  {
+    intentId: 'buscar',
+    triggerKeywords: [
+      'filtrar', 'rastrear', 'extraer', 'scan', 'crawl', 'regex',
+      'scraping', 'parsing', 'minería', 'indexar', 'seleccionar',
+      'aislar', 'obtener', 'recuperar', 'fetch', 'query',
+    ],
+    action: 'background_search',
+    queryExtraction: true,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: 'Procesamiento interno completado.',
+    priority: 10,
+  },
+
+  // ── Eliminar: Siempre pide confirmación ────────────────────────────────
+  {
+    intentId: 'eliminar',
+    triggerKeywords: null, // null = cualquier keyword del grupo
+    action: 'confirm_action',
+    queryExtraction: false,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: 'Esta acción requiere tu confirmación antes de proceder.',
+    priority: 50,
+  },
+
+  // ── Crear: Solo texto ──────────────────────────────────────────────────
+  {
+    intentId: 'crear',
+    triggerKeywords: null,
+    action: 'respond_only',
+    queryExtraction: false,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: null,
+    priority: 0,
+  },
+
+  // ── Modificar: Solo texto ──────────────────────────────────────────────
+  {
+    intentId: 'modificar',
+    triggerKeywords: null,
+    action: 'respond_only',
+    queryExtraction: false,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: null,
+    priority: 0,
+  },
+
+  // ── Informar: Solo texto ───────────────────────────────────────────────
+  {
+    intentId: 'informar',
+    triggerKeywords: null,
+    action: 'respond_only',
+    queryExtraction: false,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: null,
+    priority: 0,
+  },
+
+  // ── Enviar: Solo texto ─────────────────────────────────────────────────
+  {
+    intentId: 'enviar',
+    triggerKeywords: null,
+    action: 'respond_only',
+    queryExtraction: false,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: null,
+    priority: 0,
+  },
+
+  // ── Seguridad: Solo texto ──────────────────────────────────────────────
+  {
+    intentId: 'seguridad',
+    triggerKeywords: null,
+    action: 'respond_only',
+    queryExtraction: false,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: null,
+    priority: 0,
+  },
+
+  // ── Ayuda: Solo texto ──────────────────────────────────────────────────
+  {
+    intentId: 'ayuda',
+    triggerKeywords: null,
+    action: 'respond_only',
+    queryExtraction: false,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: null,
+    priority: 0,
+  },
+
+  // ── Automatizar: Solo texto ────────────────────────────────────────────
+  {
+    intentId: 'automatizar',
+    triggerKeywords: null,
+    action: 'respond_only',
+    queryExtraction: false,
+    urlTemplate: null,
+    fallbackUrl: null,
+    label: null,
+    description: null,
+    priority: 0,
+  },
+];
+
+// Sort once: highest priority first
+decisionRules.sort((a, b) => b.priority - a.priority);
+
+// ---------------------------------------------------------------------------
+// 3. CONVERSATIONAL FALLBACKS
+// ---------------------------------------------------------------------------
+
+const conversationalFallbackGroups = [
+  {
+    id: 'saludos',
+    name: 'Saludos',
+    keywords: [
+      'hola', 'hello', 'hi', 'hey', 'buenas', 'saludos', 'buen dia',
+      'buen día', 'buenos dias', 'buenos días', 'buenas tardes',
+      'buenas noches', 'holi', 'holis', 'hola hola', 'ey', 'eyy',
+      'qué tal', 'que tal', 'qué hay', 'que hay', 'cómo estás',
+      'como estas', 'cómo va', 'como va', 'todo bien', 'cómo amaneciste',
+      'como amaneciste', 'qué cuentas', 'que cuentas', 'cómo todo',
+      'como todo', 'que más', 'qué más', 'buen verte', 'un gusto',
+    ],
+  },
+  {
+    id: 'cortesia',
+    name: 'Cortesía',
+    keywords: [
+      'gracias', 'muchas gracias', 'mil gracias', 'te lo agradezco',
+      'agradecido', 'agradecida', 'se agradece', 'gracias totales',
+      'por favor', 'porfa', 'porfis', 'porfa plis', 'porfis plis',
+      'disculpa', 'discúlpame', 'disculpame', 'perdón', 'perdon',
+      'permiso', 'con permiso', 'sorry', 'lo siento', 'te agradezco',
+    ],
+  },
+  {
+    id: 'afirmacion',
+    name: 'Afirmación',
+    keywords: [
+      'si', 'sí', 'claro', 'vale', 'ok', 'okay', 'okey', 'de acuerdo',
+      'correcto', 'entendido', 'perfecto', 'genial', 'excelente',
+      'listo', 'dale', 'continua', 'continúa', 'va', 'va bien',
+      'está bien', 'esta bien', 'todo bien', 'exacto', 'así es',
+      'asi es', 'tal cual', 'me sirve', 'me va bien', 'funciona',
+    ],
+  },
+  {
+    id: 'negacion',
+    name: 'Negación',
+    keywords: [
+      'no', 'nop', 'nope', 'negativo', 'para nada', 'todavia no',
+      'todavía no', 'aun no', 'aún no', 'no gracias', 'mejor no',
+      'olvidalo', 'olvídalo', 'descarta eso',
+    ],
+  },
+  {
+    id: 'relleno',
+    name: 'Relleno Conversacional',
+    keywords: [
+      'oye', 'mira', 'bueno', 'pues', 'entonces', 'aja', 'ajá', 'mmm',
+      'mm', 'eh', 'em', 'este', 'sabes', 'dime', 'cuentame', 'cuéntame',
+      'a ver', 'veamos', 'pues nada', 'en fin', 'o sea', 'osea',
+      'digamos', 'basicamente', 'básicamente', 'literal', 'tipo',
+      'como que', 'más o menos', 'mas o menos',
+    ],
+  },
+  {
+    id: 'preguntas_comunes',
+    name: 'Preguntas Comunes',
+    keywords: [
+      'cómo', 'como', 'qué es', 'que es', 'por qué', 'por que', 'para qué',
+      'para que', 'dónde', 'donde', 'cuándo', 'cuando', 'cuál', 'cual',
+      'cuánto', 'cuanto', 'quién', 'quien', 'qué pasa', 'que pasa',
+      'qué onda', 'que onda', 'cómo así', 'como asi', 'qué sucede',
+      'que sucede', 'qué ocurre', 'que ocurre', 'qué significa',
+      'que significa', 'me explicas', 'me explicas eso',
+    ],
+  },
+  {
+    id: 'identidad_bot',
+    name: 'Identidad del Bot',
+    keywords: [
+      'qué eres', 'que eres', 'quién eres', 'quien eres', 'qué haces',
+      'que haces', 'qué puedes hacer', 'que puedes hacer', 'para qué sirves',
+      'para que sirves', 'eres un bot', 'eres una ia', 'eres inteligencia artificial',
+      'cómo funcionas', 'como funcionas', 'de qué tratas', 'de que tratas',
+      'cuál es tu función', 'cual es tu funcion', 'quién te hizo',
+      'quien te hizo', 'qué sabes hacer', 'que sabes hacer',
+    ],
+  },
+  {
+    id: 'estado_social',
+    name: 'Estado y Trato',
+    keywords: [
+      'cómo estás', 'como estas', 'qué tal', 'que tal', 'cómo te va',
+      'como te va', 'cómo andas', 'como andas', 'todo bien', 'cómo vas',
+      'como vas', 'cómo va todo', 'como va todo', 'qué hay de nuevo',
+      'que hay de nuevo', 'cómo sigues', 'como sigues', 'cómo va tu día',
+      'como va tu dia',
+    ],
+  },
+  {
+    id: 'presentaciones',
+    name: 'Presentaciones',
+    keywords: [
+      'me llamo', 'mi nombre es', 'soy', 'soy yo', 'mucho gusto',
+      'encantado', 'encantada', 'un placer', 'a tus ordenes', 'a tus órdenes',
+    ],
+  },
+  {
+    id: 'reacciones',
+    name: 'Reacciones',
+    keywords: [
+      'jaja', 'jeje', 'jojo', 'jajaja', 'jejeje', 'wow', 'guau', 'ups',
+      'vaya', 'ah bueno', 'oh', 'ah', 'increible', 'increíble', 'genial',
+      'cool', 'brutal', 'uff',
+    ],
+  },
+  {
+    id: 'despedidas',
+    name: 'Despedidas',
+    keywords: [
+      'adiós', 'adios', 'chao', 'chau', 'nos vemos', 'hasta luego',
+      'hasta pronto', 'bye', 'goodbye', 'hasta la próxima',
+      'hasta la proxima', 'cuídate', 'cuidate', 'hablamos luego',
+      'hablamos', 'me voy', 'ya me voy',
+    ],
+  },
+];
+
+const conversationalResponseRules = [
+  {
+    id: 'identity',
+    keywords: [
+      'qué eres', 'que eres', 'quién eres', 'quien eres', 'qué haces',
+      'que haces', 'qué puedes hacer', 'que puedes hacer', 'para qué sirves',
+      'para que sirves', 'eres un bot', 'eres una ia', 'eres inteligencia artificial',
+      'cómo funcionas', 'como funcionas', 'qué sabes hacer', 'que sabes hacer',
+    ],
+    text:
+      '**Soy FlowBot**, un asistente conversacional enfocado en detectar intenciones dentro de tus mensajes. Puedo ayudarte a **ver**, **buscar**, **crear**, **editar**, **informar**, **enviar**, **proteger** y **automatizar** tareas.',
+    iconName: 'ayuda',
+  },
+  {
+    id: 'mood',
+    keywords: [
+      'cómo estás', 'como estas', 'qué tal', 'que tal', 'cómo te va',
+      'como te va', 'cómo andas', 'como andas', 'cómo vas', 'como vas',
+      'todo bien', 'cómo va todo', 'como va todo',
+    ],
+    text:
+      '**Estoy bien y listo para ayudarte.** Si quieres, dime una acción concreta y seguimos: **ver**, **buscar**, **crear**, **editar** o **automatizar**.',
+    iconName: 'ayuda',
+  },
+  {
+    id: 'thanks',
+    keywords: [
+      'gracias', 'muchas gracias', 'mil gracias', 'te lo agradezco',
+      'agradecido', 'agradecida', 'se agradece',
+    ],
+    text:
+      '**Con gusto.** Si quieres, seguimos con otra consulta o con una tarea nueva.',
+    iconName: 'ayuda',
+  },
+  {
+    id: 'farewell',
+    keywords: [
+      'adiós', 'adios', 'chao', 'chau', 'nos vemos', 'hasta luego',
+      'hasta pronto', 'bye', 'goodbye', 'cuídate', 'cuidate',
+    ],
+    text:
+      '**Hasta luego.** Cuando quieras volver, aquí sigo para ayudarte con otra tarea.',
+    iconName: 'ayuda',
+  },
+  {
+    id: 'affirmation',
+    keywords: [
+      'ok', 'okay', 'okey', 'vale', 'de acuerdo', 'entendido',
+      'perfecto', 'listo', 'dale', 'exacto',
+    ],
+    text:
+      '**Perfecto.** Cuando quieras, dime la acción concreta y seguimos.',
+    iconName: 'ayuda',
+  },
+];
+
+const fallbackActionHints = [
+  'ver',
+  'revisar',
+  'analizar',
+  'crear',
+  'generar',
+  'editar',
+  'actualizar',
+  'buscar',
+  'encontrar',
+  'informar',
+  'documentar',
+  'enviar',
+  'compartir',
+  'proteger',
+  'automatizar',
+];
+
+const noIntentFallbackResponses = [
+  '**¡Oops!** No estoy preparado para eso todavía. Pero si usas palabras como ${hints}, puedo activar mis superpoderes.',
+  '**¡Ups!** Eso me tomó por sorpresa. Intenta con acciones como ${hints} y verás la magia.',
+  '**¡Vaya!** No supe qué hacer con eso. Prueba algo como ${hints} para que pueda ayudarte.',
+  '**¡Oops!** Parece que mi radar de intenciones no captó nada. Usa verbos como ${hints}.',
+  '**Eso no está en mi lista** de acciones reconocidas. Pero puedo trabajar con: ${hints}.',
+  '**Hmm, eso no lo tengo en mi vocabulario.** Mis palabras mágicas son: ${hints}.',
+  '**No encontré esa acción en mi repertorio.** Te cuento las que sí manejo: ${hints}.',
+  '**Eso se escapa de mi diccionario.** Pero conozco bien estas: ${hints}.',
+  '**Me quedé pensando...** y no logré descifrar qué necesitas. ¿Qué tal si pruebas con ${hints}?',
+  '**Hmm, me agarraste fuera de base.** Prueba con verbos como ${hints} y estaré listo.',
+  '**¿Eso qué fue?** Jaja, no lo entendí. Mejor intenta con: ${hints}.',
+  '**Mi cerebro de bot hizo cortocircuito.** Reiniciando... Prueba con: ${hints}.',
+  '**Error 404: intención no encontrada.** Pero tranqui, si dices algo como ${hints}, volvemos al ruedo.',
+  '**¡Casi!** No detecté una acción clara, pero estoy seguro de que si usas ${hints}, lo lograremos.',
+  '**No me rindo fácil,** pero necesito una pista. Prueba con: ${hints}.',
+  '**Estoy listo para ayudarte,** solo necesito que uses palabras como: ${hints}.',
+  '**¡Sigo aquí!** Solo necesito que me des una acción concreta: ${hints}.',
+  '**No logré identificar una acción específica.** Prueba con: ${hints}.',
+  '**No capté ninguna intención en tu mensaje.** Palabras clave que entiendo: ${hints}.',
+  '**Tu mensaje no activó ningún grupo.** Las acciones que manejo son: ${hints}.',
+  '**Soy un bot, no un adivino.** Pero si me dices algo con ${hints}, te sorprenderé.',
+  '**Eso suena interesante, pero no sé qué hacer con ello.** Mis especialidades: ${hints}.',
+  '**Si fuera humano, te pediría que lo repitas.** Como soy bot, te sugiero usar: ${hints}.',
+  '**No nací ayer, pero tampoco entendí eso.** Intentemos de nuevo con: ${hints}.',
+  '**¡Me dejaste en blanco!** Ayúdame a ayudarte usando: ${hints}.',
+  '**Mi detector de intenciones se quedó en silencio.** Dale vida con: ${hints}.',
+  '**Interesante... pero no tengo una respuesta para eso.** ¿Qué tal si pruebas con ${hints}?',
+  '**Parece que hablamos idiomas distintos por ahora.** Mis palabras favoritas: ${hints}.',
+  '**Eso no encaja en ninguna de mis categorías.** Pero si mencionas ${hints}, conecto enseguida.',
+  '**Busqué en todos mis archivos y no encontré coincidencia.** Prueba estas: ${hints}.',
+];
+
+
+
+const greetingGroup = conversationalFallbackGroups.find((group) => group.id === 'saludos');
+
+const searchIntroFillers = new Set(
+  [
+    'quiero', 'quisiera', 'necesito', 'deseo', 'puedes', 'podria', 'podrias',
+    'ayudame', 'ayudarme', 'me', 'mi', 'mis', 'esto', 'este', 'esta',
+    'estos', 'estas', 'ese', 'esa', 'esos', 'esas', 'lo', 'la', 'las',
+    'el', 'los', 'un', 'una', 'unos', 'unas', 'de', 'del', 'al', 'sobre',
+    'acerca', 'favor', 'por',
+  ].map(normalize),
+);
+
+
+function normalize(text) {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function tokenizeWithPositions(text) {
+  return [...text.matchAll(/[\p{L}\p{N}]+/gu)].map((match) => ({
+    original: match[0],
+    normalized: normalize(match[0]),
+    start: match.index,
+    end: match.index + match[0].length,
+  }));
+}
+
+function matchKeywords(text, keywords) {
+  const normalizedMsg = normalize(text);
+  const words = normalizedMsg.split(/\s+/);
+  const matches = [];
+  const seen = new Set();
+
+  for (const keyword of keywords) {
+    const normalizedKeyword = normalize(keyword);
+
+    if (seen.has(normalizedKeyword)) {
+      continue;
+    }
+
+    const isMatch = normalizedKeyword.includes(' ')
+      ? normalizedMsg.includes(normalizedKeyword)
+      : words.includes(normalizedKeyword);
+
+    if (isMatch) {
+      matches.push(keyword);
+      seen.add(normalizedKeyword);
+    }
+  }
+
+  return matches;
+}
+
+function pickRandomResponse(responses) {
+  return responses[Math.floor(Math.random() * responses.length)];
+}
+
+// Build keyword patterns for query extraction per intent group
+const keywordPatternsCache = {};
+for (const group of intentGroups) {
+  keywordPatternsCache[group.id] = group.keywords
+    .map((keyword) => ({
+      keyword,
+      normalizedWords: normalize(keyword).split(/\s+/).filter(Boolean),
+    }))
+    .sort((a, b) => b.normalizedWords.length - a.normalizedWords.length);
+}
+
+function findFirstKeywordBounds(text, keywordPatterns) {
+  const tokens = tokenizeWithPositions(text);
+  let bestMatch = null;
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    for (const pattern of keywordPatterns) {
+      const matchesPattern = pattern.normalizedWords.every(
+        (word, offset) => tokens[index + offset]?.normalized === word,
+      );
+
+      if (!matchesPattern) {
+        continue;
+      }
+
+      const lastToken = tokens[index + pattern.normalizedWords.length - 1];
+      const currentMatch = {
+        start: tokens[index].start,
+        end: lastToken.end,
+      };
+
+      if (
+        !bestMatch ||
+        currentMatch.start < bestMatch.start ||
+        (currentMatch.start === bestMatch.start && currentMatch.end > bestMatch.end)
+      ) {
+        bestMatch = currentMatch;
+      }
+    }
+  }
+
+  return bestMatch;
+}
+
+function trimSearchQuery(query) {
+  let cleanedQuery = query.trim().replace(/^[\s,.;:!?¡¿"']+/u, '');
+
+  while (cleanedQuery) {
+    const [firstToken] = tokenizeWithPositions(cleanedQuery);
+    if (!firstToken || !searchIntroFillers.has(firstToken.normalized)) {
+      break;
+    }
+
+    cleanedQuery = cleanedQuery.slice(firstToken.end).trim().replace(/^[\s,.;:!?¡¿"']+/u, '');
+  }
+
+  return cleanedQuery.replace(/[.,;:!?¡¿"']+$/u, '').trim();
+}
+
+function extractQueryForIntent(userMessage, intentId) {
+  const patterns = keywordPatternsCache[intentId];
+  if (!patterns) {
+    return '';
+  }
+
+  const keywordBounds = findFirstKeywordBounds(userMessage, patterns);
+  const rawCandidate = keywordBounds ? userMessage.slice(keywordBounds.end) : userMessage;
+  const query = trimSearchQuery(rawCandidate);
+
+  return query.length >= 2 ? query : '';
+}
+
+function getConversationalResponse(userMessage) {
+  for (const rule of conversationalResponseRules) {
+    if (matchKeywords(userMessage, rule.keywords).length > 0) {
+      return {
+        text: rule.text,
+        iconName: rule.iconName,
+      };
+    }
+  }
+
+  return null;
+}
+
+function getFallbackHintText() {
+  return fallbackActionHints.map((hint) => `**${hint}**`).join(', ');
+}
+
+
+export function analyzeMessage(userMessage) {
+  return intentGroups
+    .map((group) => {
+      const matchedKeywords = matchKeywords(userMessage, group.keywords);
+
+      if (matchedKeywords.length === 0) {
+        return null;
+      }
+
+      return {
+        ...group,
+        matchedKeywords,
+        response: pickRandomResponse(group.responses),
+      };
+    })
+    .filter(Boolean);
+}
+
+// ---------------------------------------------------------------------------
+// 6. DECISION ENGINE — resolveActions
+// ---------------------------------------------------------------------------
+
+/**
+ * Evalúa las decisionRules contra las intenciones detectadas y devuelve
+ * un array de acciones a ejecutar (puede haber más de una si hay múltiples
+ * intenciones con acciones distintas).
+ *
+ * Cada acción devuelta tiene:
+ *   action        — 'open_youtube' | 'open_search' | 'background_search' | 'confirm_action' | 'respond_only'
+ *   url           — URL completa (si aplica)
+ *   query         — query extraído del mensaje (si aplica)
+ *   hasQuery      — boolean
+ *   label         — texto para botón (si aplica)
+ *   description   — descripción corta (si aplica)
+ *   intentId      — grupo de intención asociado
+ */
+export function resolveActions(userMessage) {
+  const trimmed = userMessage.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  const intents = analyzeMessage(trimmed);
+  if (intents.length === 0) {
+    return [];
+  }
+
+  const actions = [];
+  const handledIntents = new Set();
+
+  // Walk rules in priority order (already sorted)
+  for (const rule of decisionRules) {
+    // Skip if we already resolved an action for this intent
+    if (handledIntents.has(rule.intentId)) {
+      continue;
+    }
+
+    // Check if this intent was detected
+    const matchedIntent = intents.find((intent) => intent.id === rule.intentId);
+    if (!matchedIntent) {
+      continue;
+    }
+
+    // Check trigger keywords: null means "any keyword from the group"
+    let triggered = false;
+    if (rule.triggerKeywords === null) {
+      triggered = true;
+    } else {
+      const triggerMatches = matchKeywords(trimmed, rule.triggerKeywords);
+      triggered = triggerMatches.length > 0;
+    }
+
+    if (!triggered) {
+      continue;
+    }
+
+    // Build action
+    const actionResult = {
+      action: rule.action,
+      intentId: rule.intentId,
+      label: rule.label,
+      description: rule.description,
+      query: '',
+      hasQuery: false,
+      url: rule.fallbackUrl || null,
+    };
+
+    // Extract query if needed
+    if (rule.queryExtraction) {
+      const query = extractQueryForIntent(trimmed, rule.intentId);
+      actionResult.query = query;
+      actionResult.hasQuery = Boolean(query);
+
+      if (query && rule.urlTemplate) {
+        actionResult.url = rule.urlTemplate.replace('{query}', encodeURIComponent(query));
+      }
+    }
+
+    // For respond_only, no external action is needed
+    if (rule.action === 'respond_only') {
+      handledIntents.add(rule.intentId);
+      continue;
+    }
+
+    actions.push(actionResult);
+    handledIntents.add(rule.intentId);
+  }
+
+  return actions;
+}
+
+// ---------------------------------------------------------------------------
+// 7. RESPONSE BUILDER
+// ---------------------------------------------------------------------------
+
+/**
+ * Genera la respuesta completa del bot
+ */
+export function generateBotResponse(userMessage) {
+  const trimmed = userMessage.trim();
+  if (!trimmed) {
+    return {
+      text: 'Por favor, escribe algo para que pueda ayudarte.',
+      intents: [],
+      actions: [],
+      isGreeting: false,
+      iconName: 'ayuda',
+    };
+  }
+
+  const isGreeting = matchKeywords(trimmed, greetingGroup.keywords).length > 0;
+  const intents = analyzeMessage(trimmed);
+  const conversationalResponse = getConversationalResponse(trimmed);
+
+  if (conversationalResponse && intents.length === 0) {
+    return {
+      text: conversationalResponse.text,
+      intents: [],
+      actions: [],
+      isGreeting: isGreeting,
+      iconName: conversationalResponse.iconName,
+    };
+  }
+
+  if (isGreeting && intents.length === 0) {
+    return {
+      text: '**¡Hola! Soy FlowBot**, tu asistente inteligente. Puedo ayudarte con múltiples tareas como **visualizar datos**, **crear contenido**, **buscar información**, **automatizar procesos** y mucho más. Cuéntame qué necesitas.',
+      intents: [],
+      actions: [],
+      isGreeting: true,
+      iconName: 'ayuda',
+    };
+  }
+
+  if (intents.length === 0) {
+    const hints = getFallbackHintText();
+    const template = pickRandomResponse(noIntentFallbackResponses);
+    const text = template.replace('${hints}', hints);
+
+    return {
+      text,
+      intents: [],
+      actions: [],
+      isGreeting: false,
+      iconName: 'buscar',
+    };
+  }
+
+  // Resolve actions via decision layer
+  const actions = resolveActions(trimmed);
+
+  return {
+    text: null,
+    intents,
+    actions,
+    isGreeting: false,
+    iconName: null,
+  };
+}
+
+export {
+  conversationalFallbackGroups,
+  conversationalResponseRules,
+  decisionRules,
+  fallbackActionHints,
+  intentGroups,
+};
