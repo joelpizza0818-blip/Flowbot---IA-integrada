@@ -32,7 +32,7 @@ jobs:
       - name: Upload
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: ./Flowbot/dist
 
   deploy:
     needs: build
