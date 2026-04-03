@@ -16,7 +16,6 @@ function parseRichText(text) {
     return <React.Fragment key={index}>{part}</React.Fragment>;
   });
 }
-
 const ACTION_CONFIG = {
   open_youtube: {
     iconName: 'visualizar',
@@ -28,15 +27,15 @@ const ACTION_CONFIG = {
   },
   open_search: {
     iconName: 'buscar',
-    title: 'Búsqueda preparada',
+    title: 'Busqueda preparada',
     noQueryTitle: 'Buscador listo',
     btnLabel: 'Buscar en Google',
-    noQueryDescription: 'Puedes abrir Google para completar tu búsqueda.',
+    noQueryDescription: 'Puedes abrir Google para completar tu busqueda.',
     colorClass: 'action-google',
   },
   background_search: {
     iconName: 'informar',
-    title: 'Análisis interno',
+    title: 'Analisis interno',
     noQueryTitle: 'Procesamiento completado',
     btnLabel: null,
     noQueryDescription: 'Consulta procesada internamente sin necesidad de abrir el navegador.',
@@ -44,10 +43,10 @@ const ACTION_CONFIG = {
   },
   confirm_action: {
     iconName: 'seguridad',
-    title: 'Confirmación requerida',
-    noQueryTitle: 'Confirmación requerida',
+    title: 'Confirmacion requerida',
+    noQueryTitle: 'Confirmacion requerida',
     btnLabel: null,
-    noQueryDescription: 'Esta acción requiere tu confirmación antes de proceder.',
+    noQueryDescription: 'Esta accion requiere tu confirmacion antes de proceder.',
     colorClass: 'action-confirm',
   },
 };
@@ -92,11 +91,11 @@ function ActionCard({ action }) {
       )}
 
       {action.action === 'confirm_action' && (
-        <p className="search-action-helper">⚠️ Esta acción es potencialmente destructiva. Confirma antes de proceder.</p>
+        <p className="search-action-helper">Esta accion es potencialmente destructiva. Confirma antes de proceder.</p>
       )}
 
       {action.action === 'background_search' && (
-        <p className="search-action-helper">ℹ️ Procesado internamente. No se abrió ninguna pestaña externa.</p>
+        <p className="search-action-helper">Procesado internamente. No se abrio ninguna pestaña externa.</p>
       )}
     </div>
   );

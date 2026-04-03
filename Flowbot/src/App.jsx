@@ -51,8 +51,8 @@ function App() {
     setInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const response = generateBotResponse(trimmed);
+    (async () => {
+      const response = await generateBotResponse(trimmed);
       const botMsg = {
         id: nextId.current++,
         sender: 'bot',
@@ -65,7 +65,7 @@ function App() {
 
       setMessages((prev) => [...prev, botMsg]);
       setIsTyping(false);
-    }, 800 + Math.random() * 700);
+    })();
   }
 
   function handleKeyDown(event) {

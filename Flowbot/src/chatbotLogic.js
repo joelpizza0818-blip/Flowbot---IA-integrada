@@ -1,15 +1,114 @@
-/**
- * FlowBot - Motor de detección de intenciones con capa de decisiones
- *
- * Arquitectura de 3 capas:
- *   1. Intent Groups     → detectan intenciones por palabra clave
- *   2. Decision Rules    → controlan qué acción ejecutar por cada intención/keyword
- *   3. Response Builder  → genera la respuesta final del bot
- */
+// chatbotLogic.js
 
-// ---------------------------------------------------------------------------
-// 1. INTENT GROUPS
-// ---------------------------------------------------------------------------
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+const MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite-preview",
+  "gemini-2.0-flash",
+];
+
+const SYSTEM_PROMPT = import.meta.env.VITE_SYSTEM_PROMPT|| `eres FLOWBOT una IA de tareas basicas responde de manera corta usando Markdown y negritas para enfatizar puntos clave, responde en broma si el usuario bromea y de forma grosera si el usuario es grosero`
+
+export async function fetchGeminiAI(userMessage) {
+  if (!API_KEY) {
+    console.error("[FlowBot] VITE_GEMINI_API_KEY no esta definida.");
+    return null;
+  }
+
+  for (const model of MODELS) {
+    try {
+      console.log(`[FlowBot AI] Intentando modelo: ${model}`);
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: SYSTEM_PROMPT }],
+            },
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: userMessage }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1024,
+            },
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errorMsg  = data?.error?.message || "Error desconocido";
+
+        if (res.status === 429) {
+          console.warn(`[${model}] Rate limit alcanzado. Probando siguiente modelo...`);
+          continue;
+        }
+
+        if (res.status === 400) {
+          console.warn(`[${model}] Solicitud invalida: ${errorMsg}`);
+          continue;
+        }
+
+        if (res.status === 403 || res.status === 401) {
+          console.error(`[${model}] Error de autenticacion: ${errorMsg}`);
+          return null;
+        }
+
+        if (res.status === 404) {
+          console.warn(`[${model}] Modelo no encontrado o retirado. Probando siguiente...`);
+          continue;
+        }
+
+        console.warn(`[${model}] HTTP ${res.status}: ${errorMsg}`);
+        continue;
+      }
+
+      const candidate = data?.candidates?.[0];
+
+      if (!candidate) {
+        console.warn(`[${model}] Sin candidatos en la respuesta.`);
+        continue;
+      }
+
+      const finishReason = candidate?.finishReason;
+      if (finishReason === "SAFETY" || finishReason === "RECITATION") {
+        console.warn(`[${model}] Respuesta bloqueada por seguridad (${finishReason}).`);
+        return "No puedo responder a esa consulta por politicas de seguridad.";
+      }
+
+      const text = candidate?.content?.parts?.[0]?.text;
+
+      if (text && text.trim().length > 0) {
+        console.log(`[FlowBot AI] Respondiendo con modelo: ${model}`);
+        return text.trim();
+      }
+
+      console.warn(`[${model}] Respuesta vacia o sin texto.`);
+
+    } catch (err) {
+      console.warn(`[${model}] Error de red o parsing: ${err.message}`);
+    }
+  }
+
+  console.error("[FlowBot AI] Todos los modelos fallaron.");
+  return null;
+}
+
+export async function getBotResponse(prompt) {
+  const result = await fetchGeminiAI(prompt);
+  return result ?? "No puedo responder ahora mismo, intenta más tarde.";
+}
 
 const intentGroups = [
   {
@@ -329,24 +428,7 @@ const intentGroups = [
   },
 ];
 
-// ---------------------------------------------------------------------------
-// 2. DECISION RULES — Capa central de control
-// ---------------------------------------------------------------------------
-
-/**
- * Cada regla define:
- *   intentId         — grupo de intención al que aplica
- *   triggerKeywords  — si alguna keyword del mensaje matchea, se activa esta regla
- *   action           — tipo de acción: open_youtube | open_search | background_search | confirm_action | respond_only
- *   queryExtraction  — ¿extraer query del mensaje?
- *   urlTemplate      — URL con placeholder {query} (si aplica)
- *   fallbackUrl      — URL si no hay query (si aplica)
- *   label            — texto para el botón de acción
- *   description      — descripción corta para el usuario
- *   priority         — mayor número = se evalúa primero
- */
 const decisionRules = [
-  // ── Visualizar: YouTube ────────────────────────────────────────────────
   {
     intentId: 'visualizar',
     triggerKeywords: ['ver video', 'ver tutorial', 'tutorial', 'reproducir', 'video', 'youtube'],
@@ -358,8 +440,6 @@ const decisionRules = [
     description: 'Se encontró contenido de video. Puedes verlo en YouTube.',
     priority: 30,
   },
-
-  // ── Visualizar: Google Search ──────────────────────────────────────────
   {
     intentId: 'visualizar',
     triggerKeywords: [
@@ -375,8 +455,6 @@ const decisionRules = [
     description: 'Búsqueda preparada. Puedes abrirla en el navegador.',
     priority: 20,
   },
-
-  // ── Visualizar: Background (no abre pestaña) ──────────────────────────
   {
     intentId: 'visualizar',
     triggerKeywords: [
@@ -393,8 +471,6 @@ const decisionRules = [
     description: 'Análisis realizado internamente.',
     priority: 10,
   },
-
-  // ── Buscar: Google Search ──────────────────────────────────────────────
   {
     intentId: 'buscar',
     triggerKeywords: [
@@ -409,8 +485,6 @@ const decisionRules = [
     description: 'Búsqueda preparada. Puedes abrirla en el navegador.',
     priority: 20,
   },
-
-  // ── Buscar: Background ────────────────────────────────────────────────
   {
     intentId: 'buscar',
     triggerKeywords: [
@@ -426,11 +500,9 @@ const decisionRules = [
     description: 'Procesamiento interno completado.',
     priority: 10,
   },
-
-  // ── Eliminar: Siempre pide confirmación ────────────────────────────────
   {
     intentId: 'eliminar',
-    triggerKeywords: null, // null = cualquier keyword del grupo
+    triggerKeywords: null,
     action: 'confirm_action',
     queryExtraction: false,
     urlTemplate: null,
@@ -439,8 +511,6 @@ const decisionRules = [
     description: 'Esta acción requiere tu confirmación antes de proceder.',
     priority: 50,
   },
-
-  // ── Crear: Solo texto ──────────────────────────────────────────────────
   {
     intentId: 'crear',
     triggerKeywords: null,
@@ -452,8 +522,6 @@ const decisionRules = [
     description: null,
     priority: 0,
   },
-
-  // ── Modificar: Solo texto ──────────────────────────────────────────────
   {
     intentId: 'modificar',
     triggerKeywords: null,
@@ -465,8 +533,6 @@ const decisionRules = [
     description: null,
     priority: 0,
   },
-
-  // ── Informar: Solo texto ───────────────────────────────────────────────
   {
     intentId: 'informar',
     triggerKeywords: null,
@@ -478,8 +544,6 @@ const decisionRules = [
     description: null,
     priority: 0,
   },
-
-  // ── Enviar: Solo texto ─────────────────────────────────────────────────
   {
     intentId: 'enviar',
     triggerKeywords: null,
@@ -491,8 +555,6 @@ const decisionRules = [
     description: null,
     priority: 0,
   },
-
-  // ── Seguridad: Solo texto ──────────────────────────────────────────────
   {
     intentId: 'seguridad',
     triggerKeywords: null,
@@ -504,8 +566,6 @@ const decisionRules = [
     description: null,
     priority: 0,
   },
-
-  // ── Ayuda: Solo texto ──────────────────────────────────────────────────
   {
     intentId: 'ayuda',
     triggerKeywords: null,
@@ -517,8 +577,6 @@ const decisionRules = [
     description: null,
     priority: 0,
   },
-
-  // ── Automatizar: Solo texto ────────────────────────────────────────────
   {
     intentId: 'automatizar',
     triggerKeywords: null,
@@ -532,12 +590,7 @@ const decisionRules = [
   },
 ];
 
-// Sort once: highest priority first
 decisionRules.sort((a, b) => b.priority - a.priority);
-
-// ---------------------------------------------------------------------------
-// 3. CONVERSATIONAL FALLBACKS
-// ---------------------------------------------------------------------------
 
 const conversationalFallbackGroups = [
   {
@@ -716,21 +769,9 @@ const conversationalResponseRules = [
 ];
 
 const fallbackActionHints = [
-  'ver',
-  'revisar',
-  'analizar',
-  'crear',
-  'generar',
-  'editar',
-  'actualizar',
-  'buscar',
-  'encontrar',
-  'informar',
-  'documentar',
-  'enviar',
-  'compartir',
-  'proteger',
-  'automatizar',
+  'ver', 'revisar', 'analizar', 'crear', 'generar', 'editar', 'actualizar',
+  'buscar', 'encontrar', 'informar', 'documentar', 'enviar', 'compartir',
+  'proteger', 'automatizar',
 ];
 
 const noIntentFallbackResponses = [
@@ -766,8 +807,6 @@ const noIntentFallbackResponses = [
   '**Busqué en todos mis archivos y no encontré coincidencia.** Prueba estas: ${hints}.',
 ];
 
-
-
 const greetingGroup = conversationalFallbackGroups.find((group) => group.id === 'saludos');
 
 const searchIntroFillers = new Set(
@@ -779,7 +818,6 @@ const searchIntroFillers = new Set(
     'acerca', 'favor', 'por',
   ].map(normalize),
 );
-
 
 function normalize(text) {
   return text
@@ -805,10 +843,7 @@ function matchKeywords(text, keywords) {
 
   for (const keyword of keywords) {
     const normalizedKeyword = normalize(keyword);
-
-    if (seen.has(normalizedKeyword)) {
-      continue;
-    }
+    if (seen.has(normalizedKeyword)) continue;
 
     const isMatch = normalizedKeyword.includes(' ')
       ? normalizedMsg.includes(normalizedKeyword)
@@ -827,7 +862,6 @@ function pickRandomResponse(responses) {
   return responses[Math.floor(Math.random() * responses.length)];
 }
 
-// Build keyword patterns for query extraction per intent group
 const keywordPatternsCache = {};
 for (const group of intentGroups) {
   keywordPatternsCache[group.id] = group.keywords
@@ -847,16 +881,10 @@ function findFirstKeywordBounds(text, keywordPatterns) {
       const matchesPattern = pattern.normalizedWords.every(
         (word, offset) => tokens[index + offset]?.normalized === word,
       );
-
-      if (!matchesPattern) {
-        continue;
-      }
+      if (!matchesPattern) continue;
 
       const lastToken = tokens[index + pattern.normalizedWords.length - 1];
-      const currentMatch = {
-        start: tokens[index].start,
-        end: lastToken.end,
-      };
+      const currentMatch = { start: tokens[index].start, end: lastToken.end };
 
       if (
         !bestMatch ||
@@ -876,10 +904,7 @@ function trimSearchQuery(query) {
 
   while (cleanedQuery) {
     const [firstToken] = tokenizeWithPositions(cleanedQuery);
-    if (!firstToken || !searchIntroFillers.has(firstToken.normalized)) {
-      break;
-    }
-
+    if (!firstToken || !searchIntroFillers.has(firstToken.normalized)) break;
     cleanedQuery = cleanedQuery.slice(firstToken.end).trim().replace(/^[\s,.;:!?¡¿"']+/u, '');
   }
 
@@ -888,9 +913,7 @@ function trimSearchQuery(query) {
 
 function extractQueryForIntent(userMessage, intentId) {
   const patterns = keywordPatternsCache[intentId];
-  if (!patterns) {
-    return '';
-  }
+  if (!patterns) return '';
 
   const keywordBounds = findFirstKeywordBounds(userMessage, patterns);
   const rawCandidate = keywordBounds ? userMessage.slice(keywordBounds.end) : userMessage;
@@ -902,13 +925,9 @@ function extractQueryForIntent(userMessage, intentId) {
 function getConversationalResponse(userMessage) {
   for (const rule of conversationalResponseRules) {
     if (matchKeywords(userMessage, rule.keywords).length > 0) {
-      return {
-        text: rule.text,
-        iconName: rule.iconName,
-      };
+      return { text: rule.text, iconName: rule.iconName };
     }
   }
-
   return null;
 }
 
@@ -916,84 +935,41 @@ function getFallbackHintText() {
   return fallbackActionHints.map((hint) => `**${hint}**`).join(', ');
 }
 
-
 export function analyzeMessage(userMessage) {
   return intentGroups
     .map((group) => {
       const matchedKeywords = matchKeywords(userMessage, group.keywords);
-
-      if (matchedKeywords.length === 0) {
-        return null;
-      }
-
-      return {
-        ...group,
-        matchedKeywords,
-        response: pickRandomResponse(group.responses),
-      };
+      if (matchedKeywords.length === 0) return null;
+      return { ...group, matchedKeywords, response: pickRandomResponse(group.responses) };
     })
     .filter(Boolean);
 }
 
-// ---------------------------------------------------------------------------
-// 6. DECISION ENGINE — resolveActions
-// ---------------------------------------------------------------------------
-
-/**
- * Evalúa las decisionRules contra las intenciones detectadas y devuelve
- * un array de acciones a ejecutar (puede haber más de una si hay múltiples
- * intenciones con acciones distintas).
- *
- * Cada acción devuelta tiene:
- *   action        — 'open_youtube' | 'open_search' | 'background_search' | 'confirm_action' | 'respond_only'
- *   url           — URL completa (si aplica)
- *   query         — query extraído del mensaje (si aplica)
- *   hasQuery      — boolean
- *   label         — texto para botón (si aplica)
- *   description   — descripción corta (si aplica)
- *   intentId      — grupo de intención asociado
- */
 export function resolveActions(userMessage) {
   const trimmed = userMessage.trim();
-  if (!trimmed) {
-    return [];
-  }
+  if (!trimmed) return [];
 
   const intents = analyzeMessage(trimmed);
-  if (intents.length === 0) {
-    return [];
-  }
+  if (intents.length === 0) return [];
 
   const actions = [];
   const handledIntents = new Set();
 
-  // Walk rules in priority order (already sorted)
   for (const rule of decisionRules) {
-    // Skip if we already resolved an action for this intent
-    if (handledIntents.has(rule.intentId)) {
-      continue;
-    }
+    if (handledIntents.has(rule.intentId)) continue;
 
-    // Check if this intent was detected
     const matchedIntent = intents.find((intent) => intent.id === rule.intentId);
-    if (!matchedIntent) {
-      continue;
-    }
+    if (!matchedIntent) continue;
 
-    // Check trigger keywords: null means "any keyword from the group"
     let triggered = false;
     if (rule.triggerKeywords === null) {
       triggered = true;
     } else {
-      const triggerMatches = matchKeywords(trimmed, rule.triggerKeywords);
-      triggered = triggerMatches.length > 0;
+      triggered = matchKeywords(trimmed, rule.triggerKeywords).length > 0;
     }
 
-    if (!triggered) {
-      continue;
-    }
+    if (!triggered) continue;
 
-    // Build action
     const actionResult = {
       action: rule.action,
       intentId: rule.intentId,
@@ -1004,18 +980,15 @@ export function resolveActions(userMessage) {
       url: rule.fallbackUrl || null,
     };
 
-    // Extract query if needed
     if (rule.queryExtraction) {
       const query = extractQueryForIntent(trimmed, rule.intentId);
       actionResult.query = query;
       actionResult.hasQuery = Boolean(query);
-
       if (query && rule.urlTemplate) {
         actionResult.url = rule.urlTemplate.replace('{query}', encodeURIComponent(query));
       }
     }
 
-    // For respond_only, no external action is needed
     if (rule.action === 'respond_only') {
       handledIntents.add(rule.intentId);
       continue;
@@ -1028,14 +1001,7 @@ export function resolveActions(userMessage) {
   return actions;
 }
 
-// ---------------------------------------------------------------------------
-// 7. RESPONSE BUILDER
-// ---------------------------------------------------------------------------
-
-/**
- * Genera la respuesta completa del bot
- */
-export function generateBotResponse(userMessage) {
+export async function generateBotResponse(userMessage) {
   const trimmed = userMessage.trim();
   if (!trimmed) {
     return {
@@ -1072,6 +1038,20 @@ export function generateBotResponse(userMessage) {
   }
 
   if (intents.length === 0) {
+    // Intentar con Gemini AI (fetchGeminiAI ahora sí está definida)
+    const geminiText = await fetchGeminiAI(trimmed);
+
+    if (geminiText) {
+      return {
+        text: geminiText,
+        intents: [],
+        actions: [],
+        isGreeting: false,
+        iconName: 'ayuda',
+      };
+    }
+
+    // Fallback clásico si la IA también falla
     const hints = getFallbackHintText();
     const template = pickRandomResponse(noIntentFallbackResponses);
     const text = template.replace('${hints}', hints);
@@ -1085,7 +1065,6 @@ export function generateBotResponse(userMessage) {
     };
   }
 
-  // Resolve actions via decision layer
   const actions = resolveActions(trimmed);
 
   return {
