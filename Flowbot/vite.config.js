@@ -3,6 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/Flowbot---IA-integrada/'
-
+  base: '/Flowbot---IA-integrada/' // 👈 CLAVE
 })
