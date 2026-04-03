@@ -1,6 +1,6 @@
 // chatbotLogic.js
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyAcg7HlxMx3wzGP39RtIW630yzySqsR43E';
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 const MODELS = [
   "gemini-2.5-flash",
