@@ -65,6 +65,34 @@ function App() {
 
       setMessages((prev) => [...prev, botMsg]);
       setIsTyping(false);
+
+      if (botMsg.actions && botMsg.actions.length > 0) {
+        botMsg.actions.forEach((actionObj) => {
+          const { action } = actionObj;
+          
+          if (action === 'toggle_fullscreen') {
+            if (!document.fullscreenElement) {
+              document.documentElement.requestFullscreen().catch((err) => {
+                console.error(`Error al activar pantalla completa: ${err.message}`);
+              });
+            } else {
+              document.exitFullscreen();
+            }
+          } else if (action === 'reload_page') {
+            setTimeout(() => window.location.reload(), 1500);
+          } else if (action === 'print_page') {
+            setTimeout(() => window.print(), 1000);
+          } else if (action === 'scroll_top') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } else if (action === 'scroll_bottom') {
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+          } else if (action === 'clear_chat') {
+            setTimeout(() => handleClearChat(), 500);
+          } else if (action === 'toggle_sidebar') {
+            setSidebarOpen((prev) => !prev);
+          }
+        });
+      }
     })();
   }
 
