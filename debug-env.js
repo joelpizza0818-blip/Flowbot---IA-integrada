@@ -1,9 +1,4 @@
-#!/usr/bin/env node
-
-/**
- * Script de debug para verificar que las variables de .env se cargan correctamente
- * Uso: node debug-env.js
- */
+// GENERADO POR IA ESTO SOLO ES PARA DEBUGEAR EL .env ANTES DE INYECTARLO EN EL WORKFLOW. NO INCLUYE LOGICA DE CHATBOT, SOLO LEE Y MUESTRA LAS VARIABLES DE ENTORNO RELACIONADAS CON GEMINI.
 
 import fs from 'fs';
 import path from 'path';

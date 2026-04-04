@@ -33,7 +33,7 @@ function createWelcomeMessage() {
   return {
     id: 0,
     sender: 'bot',
-    text: '**¡Bienvenido a FlowBot!** Soy tu asistente inteligente de detección de intenciones. Escríbeme lo que necesitas y detectaré automáticamente la acción a realizar. Prueba con frases como *"quiero ver mis datos"*, *"crear un nuevo proyecto"* o *"buscar información"*.',
+    text: '**¡Bienvenido a FlowBot!** Soy tu asistente de IA inteligente. Escríbeme cualquier cosa y nos conectaremos a través de la inteligencia artificial. Puedes preguntarme sobre programación, obtener ayuda con tareas, o simplemente charlar. ¡Estoy aquí para ayudarte!',
     iconName: 'ayuda',
     intents: [],
     time: getTimeString(),
@@ -54,6 +54,9 @@ function App() {
   const [viewportMetrics, setViewportMetrics] = useState(() => getViewportMetrics());
   const [navigationUrl, setNavigationUrl] = useState(null);
   const [isAIOnline, setIsAIOnline] = useState(true);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [searchModalType, setSearchModalType] = useState(null); // 'search' o 'youtube'
+  const [searchModalInput, setSearchModalInput] = useState('');
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
@@ -318,15 +321,13 @@ function App() {
         });
       }, 1000);
     } else if (actionId === 'open_search') {
-      const searchTerm = prompt('¿Qué deseas buscar?');
-      if (searchTerm) {
-        setNavigationUrl(`https://www.google.com/search?q=${encodeURIComponent(searchTerm)}`);
-      }
+      setSearchModalType('search');
+      setSearchModalOpen(true);
+      setSearchModalInput('');
     } else if (actionId === 'open_youtube') {
-      const searchTerm = prompt('¿Qué deseas buscar en video?');
-      if (searchTerm) {
-        setNavigationUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(searchTerm)}`);
-      }
+      setSearchModalType('youtube');
+      setSearchModalOpen(true);
+      setSearchModalInput('');
     }
     
     if (viewportMetrics.isCompact) {
@@ -491,6 +492,60 @@ function App() {
           </div>
         </div>
       )}
+
+      {searchModalOpen && (
+        <div className="search-modal-overlay" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>
+          <div className="search-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="search-modal-header">
+              <h3>{searchModalType === 'youtube' ? '🎥 Buscar en YouTube' : '🔍 Buscar en Google'}</h3>
+              <button className="search-modal-close" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>✕</button>
+            </div>
+            
+            <div className="search-modal-body">
+              <input
+                type="text"
+                className="search-modal-input"
+                placeholder={searchModalType === 'youtube' ? '¿Qué deseas buscar en video?' : '¿Qué deseas buscar?'}
+                value={searchModalInput}
+                onChange={(e) => setSearchModalInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchModalInput.trim()) {
+                    const url = searchModalType === 'youtube'
+                      ? `https://www.youtube.com/results?search_query=${encodeURIComponent(searchModalInput)}`
+                      : `https://www.google.com/search?q=${encodeURIComponent(searchModalInput)}`;
+                    setNavigationUrl(url);
+                    setSearchModalOpen(false);
+                    setSearchModalInput('');
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+            
+            <div className="search-modal-footer">
+              <button className="search-modal-cancel" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>
+                Cancelar
+              </button>
+              <button 
+                className="search-modal-submit" 
+                onClick={() => {
+                  if (searchModalInput.trim()) {
+                    const url = searchModalType === 'youtube'
+                      ? `https://www.youtube.com/results?search_query=${encodeURIComponent(searchModalInput)}`
+                      : `https://www.google.com/search?q=${encodeURIComponent(searchModalInput)}`;
+                    setNavigationUrl(url);
+                    setSearchModalOpen(false);
+                    setSearchModalInput('');
+                  }
+                }}
+                disabled={!searchModalInput.trim()}
+              >
+                {searchModalType === 'youtube' ? 'Ver en YouTube' : 'Buscar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-header">
           <FlowLogo size={36} />
@@ -503,7 +558,9 @@ function App() {
         <div className="sidebar-section">
           <h3 className="section-title">Grupos de Intención</h3>
           <div className="intent-groups-list">
-            {intentGroups.map((group) => (
+            {intentGroups
+              .filter((group) => ['automatizar', 'acciones_sistema'].includes(group.id))
+              .map((group) => (
               <div key={group.id} className="sidebar-group" style={{ '--group-color': group.color }}>
                 <div className="group-header">
                   <span className="group-icon">
