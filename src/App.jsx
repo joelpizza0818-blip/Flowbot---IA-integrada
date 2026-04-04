@@ -48,7 +48,7 @@ function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [isComposerFocused, setIsComposerFocused] = useState(false);
-  const [timerAlert, setTimerAlert] = useState(null); // { label, total, remaining }
+  const [timerAlert, setTimerAlert] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 768);
   const [viewportMetrics, setViewportMetrics] = useState(() => getViewportMetrics());
   const messagesEndRef = useRef(null);
@@ -197,7 +197,6 @@ function App() {
             const numMatch = rawQuery.match(/\d+/);
             let seconds = numMatch ? parseInt(numMatch[0], 10) : 10;
             
-            // Soporte básico para minutos
             if (rawQuery.toLowerCase().includes('minuto')) {
               seconds *= 60;
             }
@@ -205,7 +204,6 @@ function App() {
             const label = rawQuery || 'Tarea programada';
             console.log(`Starting timer for ${seconds} seconds with label: ${label}`);
             
-            // Iniciar el temporizador real con actualización de estado
             const timerId = setInterval(() => {
               setTimerAlert((prev) => {
                 if (!prev || prev.remaining <= 1) {

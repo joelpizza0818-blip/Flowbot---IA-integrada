@@ -35,17 +35,13 @@ function CodeBlock({ code }) {
 }
 
 function parseRichText(text) {
-  // Handle code blocks (```code```) and inline code (`code`)
   const blockCodeRegex = /```([\s\S]*?)```/g;
   const inlineCodeRegex = /`([^`]+)`/g;
   
-  // Split by code blocks first
   const blockParts = text.split(blockCodeRegex).map((part, idx) => {
     if (idx % 2 === 1) {
-      // This is a code block
       return { type: 'code-block', content: part };
     }
-    // Process inline code and markdown formatting in non-code-block text
     return { type: 'text', content: part };
   });
 
@@ -54,10 +50,8 @@ function parseRichText(text) {
       return <CodeBlock key={blockIdx} code={block.content} />;
     }
 
-    // For text blocks, process inline code and other formatting
     const inlineParts = block.content.split(inlineCodeRegex).map((part, inlineIdx) => {
       if (inlineIdx % 2 === 1) {
-        // This is inline code
         return (
           <code key={`inline-${inlineIdx}`} className="inline-code">
             {part}
@@ -65,7 +59,6 @@ function parseRichText(text) {
         );
       }
 
-      // Process bold and italic
       const boldItalicParts = part.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
       return boldItalicParts.map((bprt, bIdx) => {
         if (bprt.startsWith('**') && bprt.endsWith('**')) {

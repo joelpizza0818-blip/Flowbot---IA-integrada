@@ -1,15 +1,13 @@
-// chatbotLogic.js
-
 const AI_UNAVAILABLE_MESSAGE =
   'El modelo de IA no esta disponible en este momento. Intenta de nuevo en unos minutos.';
 
 // Sistema de fallback para claves API
 const API_KEYS = [
   import.meta.env.VITE_GEMINI_API_KEY || '',
-  'AIzaSyA6FeBzvB6ADWQiWR4LHQzDvevmt121eGk',  // Clave 2
-  'AIzaSyCzk_OcnYpPRQOCX5J0IfiLhijsEB5YORI',  // Clave 3
-  'AIzaSyDKVYWW_9xp9elpogfpM6JoZarb4uYbOkg',  // Clave 4
-  'AIzaSyB6D4ydwqmKD9cB2dLflbgQWPVUf9Kg6uU',  // Clave 5
+  'AIzaSyA6FeBzvB6ADWQiWR4LHQzDvevmt121eGk',
+  'AIzaSyCzk_OcnYpPRQOCX5J0IfiLhijsEB5YORI',
+  'AIzaSyDKVYWW_9xp9elpogfpM6JoZarb4uYbOkg',
+  'AIzaSyB6D4ydwqmKD9cB2dLflbgQWPVUf9Kg6uU',
 ].filter(key => key && key.length > 0);
 
 const PUBLIC_API_KEY = API_KEYS[0] || '';
@@ -18,7 +16,6 @@ const SYSTEM_PROMPT =
   import.meta.env.VITE_SYSTEM_PROMPT ||
   'Eres FLOWBOT, una IA de tareas basicas. Responde de forma breve, usando Markdown y negritas para enfatizar puntos clave.';
 
-// Modelos con fallback degradativo
 const CLIENT_MODELS = [
   'gemini-2.5-flash',
   'gemini-2.5-light',
@@ -95,7 +92,6 @@ async function fetchGeminiDirect(userMessage) {
     return null;
   }
 
-  // Intentar con cada combinación de clave API y modelo
   for (const apiKey of API_KEYS) {
     for (const model of CLIENT_MODELS) {
       try {
@@ -155,107 +151,6 @@ export async function fetchGeminiAI(userMessage) {
   if (directText) return directText;
 
   return AI_UNAVAILABLE_MESSAGE;
-
-  /*
-
-
-
-  // Detectar si estamos en un hosting estático (GitHub Pages, Netlify, etc.)
-  const hostname = window.location.hostname;
-  const isStaticHosting = hostname.includes('github.io') || 
-                          hostname.includes('netlify.app') || 
-                          hostname.includes('vercel.app') ||
-                          hostname.includes('pages.dev');
-  
-  // En hosting estático NO hay proxy backend, ir directo a la API
-  if (!isStaticHosting) {
-    try {
-      console.log(`[FlowBot AI] Modo Servidor — Intentando Proxy Seguro...`);
-      const response = await fetch('/api/flowbot-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userMessage, systemPrompt: import.meta.env.VITE_SYSTEM_PROMPT })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return text.trim();
-      }
-      console.warn("[FlowBot AI] Proxy no disponible. Cambiando a modo directo...");
-    } catch (err) {
-      console.warn("[FlowBot AI] Proxy inaccesible:", err.message);
-    }
-  } else {
-    console.log(`[FlowBot AI] Modo GitHub Pages — Conexión directa con Gemini API.`);
-  }
-
-  // Verificar que la API Key esté disponible para llamadas directas
-  if (!import.meta.env.VITE_GEMINI_API_KEY) {
-    console.error("[FlowBot] API Key no configurada. Verifica VITE_GEMINI_API_KEY en los secrets del repositorio.");
-    return "⚠️ El modelo de IA no está disponible en este momento. Contacta al administrador.";
-  }
-
-  for (const model of MODELS) {
-    try {
-      console.log(`[FlowBot AI] Conectando con modelo: ${model}...`);
-
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            system_instruction: {
-              parts: [{ text: import.meta.env.VITE_SYSTEM_PROMPT }],
-            },
-            contents: [
-              {
-                role: "user",
-                parts: [{ text: userMessage }],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 1024,
-            },
-          }),
-        }
-      );
-
-      const data = await res.json();
-      if (!res.ok) {
-        console.warn(`[FlowBot AI] ${model} respondió con status ${res.status}: ${data?.error?.message || 'Error desconocido'}`);
-        if (res.status === 429) { continue; }
-        if (res.status === 400) { continue; }
-        if (res.status === 403 || res.status === 401) { return "⚠️ La clave de API no es válida o ha expirado."; }
-        continue;
-      }
-
-      const candidate = data?.candidates?.[0];
-      if (!candidate) continue;
-
-      const finishReason = candidate?.finishReason;
-      if (finishReason === "SAFETY" || finishReason === "RECITATION") {
-        return "No puedo responder a esa consulta por políticas de seguridad.";
-      }
-
-      const text = candidate?.content?.parts?.[0]?.text;
-      if (text && text.trim().length > 0) {
-        console.log(`[FlowBot AI] ✅ Respuesta exitosa vía ${model}`);
-        return text.trim();
-      }
-
-    } catch (err) {
-      console.warn(`[FlowBot AI] ${model} — Error de red: ${err.message}`);
-    }
-  }
-
-  console.error("[FlowBot AI] Todos los modelos fallaron.");
-  return null;
-  */
 }
 
 export async function getBotResponse(prompt) {
