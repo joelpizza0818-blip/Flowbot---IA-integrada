@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import FlowLogo from './components/FlowLogo';
+import BackgroundLogo from './components/BackgroundLogo';
 import ChatMessage from './components/ChatMessage';
 import IntentIcon from './components/IntentIcon';
 import { generateBotResponse, intentGroups, availableActions } from './chatbotLogic';
@@ -276,7 +277,19 @@ function App() {
     } else if (actionId === 'toggle_sidebar') {
       setSidebarOpen((prev) => !prev);
     } else if (actionId === 'open_console') {
-      console.log('%cConsola abierta desde FlowBot', 'color: #00ff00; font-size: 16px; font-weight: bold;');
+      console.log('%c🔧 FLOWBOT CONSOLE ABIERTA', 'color: #00ff00; font-size: 18px; font-weight: bold; text-shadow: 0 0 10px #00ff00');
+      console.log('%cAcciones disponibles:', 'color: #0088ff; font-size: 14px; font-weight: bold');
+      console.log('%c• fullscreen, sidebar, reload, print, scroll_top, scroll_bottom', 'color: #00d4ff; font-size: 12px');
+      console.log('%c• clear_chat, search, youtube, scan, encryption, timer', 'color: #00d4ff; font-size: 12px');
+      try {
+        if (window.devtools?.open !== undefined) {
+          window.devtools.open();
+        } else {
+          document.body.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 123, code: 'F12' }));
+        }
+      } catch {
+        console.log('%c⚠️ Presiona F12 para abrir DevTools completo', 'color: #ffaa00; font-size: 12px');
+      }
     } else if (actionId === 'reload_page') {
       setTimeout(() => window.location.reload(), 1500);
     } else if (actionId === 'print_page') {
@@ -573,6 +586,7 @@ function App() {
 
         <div className="messages-container" id="messages-container" ref={messagesContainerRef}>
           <div className="messages-inner">
+            {messages.length === 1 && <BackgroundLogo />}
             {messages.map((message, index) => (
               <ChatMessage key={message.id} message={message} isLatest={index === messages.length - 1} />
             ))}

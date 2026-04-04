@@ -111,6 +111,51 @@ body {
   75% { transform: translate(15px, 35px) scale(1.02); }
 }
 
+.background-logo-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.background-logo-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.background-logo-glow {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(0, 255, 0, 0.15) 0%, rgba(0, 255, 0, 0.05) 30%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(40px);
+  animation: glow-pulse 3s ease-in-out infinite;
+  z-index: 0;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.2); opacity: 0.4; }
+}
+
+.background-logo-wrapper svg {
+  opacity: 0.1;
+  filter: drop-shadow(0 0 20px rgba(0, 255, 0, 0.3));
+  animation: float-logo 6s ease-in-out infinite;
+  z-index: 1;
+}
+
+@keyframes float-logo {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
 .sidebar {
   width: 320px;
   min-width: 320px;
