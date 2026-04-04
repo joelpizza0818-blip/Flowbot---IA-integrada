@@ -33,14 +33,26 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Load .env file
+        run: |
+          cat .env >> $GITHUB_ENV
+          echo "DEBUG: Variables cargadas desde .env"
+          grep VITE_GEMINI_API_KEY $GITHUB_ENV || echo "No encontrado"
+
+      - name: Debug env variables
+        run: |
+          echo "VITE_GEMINI_API_KEY: ${VITE_GEMINI_API_KEY:0:20}..."
+          echo "VITE_GEMINI_API_KEY_FALLBACK: ${VITE_GEMINI_API_KEY_FALLBACK:0:20}..."
+          echo "VITE_GEMINI_API_KEY_FALLBACK_2: ${VITE_GEMINI_API_KEY_FALLBACK_2:0:20}..."
+
       - name: Build
         run: npm run build
         env:
-          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
-          VITE_GEMINI_API_KEY_FALLBACK: ${{ secrets.VITE_GEMINI_API_KEY_FALLBACK }}
-          VITE_GEMINI_API_KEY_FALLBACK_2: ${{ secrets.VITE_GEMINI_API_KEY_FALLBACK_2 }}
-          VITE_SYSTEM_PROMPT: ${{ secrets.VITE_SYSTEM_PROMPT }}
-          VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
+          VITE_GEMINI_API_KEY: ${{ env.VITE_GEMINI_API_KEY }}
+          VITE_GEMINI_API_KEY_FALLBACK: ${{ env.VITE_GEMINI_API_KEY_FALLBACK }}
+          VITE_GEMINI_API_KEY_FALLBACK_2: ${{ env.VITE_GEMINI_API_KEY_FALLBACK_2 }}
+          VITE_SYSTEM_PROMPT: ${{ env.VITE_SYSTEM_PROMPT }}
+          VITE_PROXY_URL: ${{ env.VITE_PROXY_URL }}
           VITE_BASE_PATH: /Flowbot---IA-integrada/
 
       - name: Lint
@@ -66,14 +78,26 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Load .env file
+        run: |
+          cat .env >> $GITHUB_ENV
+          echo "DEBUG: Variables cargadas desde .env"
+          grep VITE_GEMINI_API_KEY $GITHUB_ENV || echo "No encontrado"
+
+      - name: Debug env variables
+        run: |
+          echo "VITE_GEMINI_API_KEY: ${VITE_GEMINI_API_KEY:0:20}..."
+          echo "VITE_GEMINI_API_KEY_FALLBACK: ${VITE_GEMINI_API_KEY_FALLBACK:0:20}..."
+          echo "VITE_GEMINI_API_KEY_FALLBACK_2: ${VITE_GEMINI_API_KEY_FALLBACK_2:0:20}..."
+
       - name: Build
         run: npm run build
         env:
-          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
-          VITE_GEMINI_API_KEY_FALLBACK: ${{ secrets.VITE_GEMINI_API_KEY_FALLBACK }}
-          VITE_GEMINI_API_KEY_FALLBACK_2: ${{ secrets.VITE_GEMINI_API_KEY_FALLBACK_2 }}
-          VITE_SYSTEM_PROMPT: ${{ secrets.VITE_SYSTEM_PROMPT }}
-          VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
+          VITE_GEMINI_API_KEY: ${{ env.VITE_GEMINI_API_KEY }}
+          VITE_GEMINI_API_KEY_FALLBACK: ${{ env.VITE_GEMINI_API_KEY_FALLBACK }}
+          VITE_GEMINI_API_KEY_FALLBACK_2: ${{ env.VITE_GEMINI_API_KEY_FALLBACK_2 }}
+          VITE_SYSTEM_PROMPT: ${{ env.VITE_SYSTEM_PROMPT }}
+          VITE_PROXY_URL: ${{ env.VITE_PROXY_URL }}
           VITE_BASE_PATH: /Flowbot---IA-integrada/
 
       - name: Lint
