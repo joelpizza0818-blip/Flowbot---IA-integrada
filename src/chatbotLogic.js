@@ -120,7 +120,8 @@ async function fetchGeminiDirect(userMessage) {
         );
 
         if (!response.ok) {
-          console.warn(`[FlowBot AI] ${model} (clave ${API_KEYS.indexOf(apiKey) + 1}) respondio con status ${response.status}.`);
+          const statusMsg = response.status === 429 ? '(CUOTA AGOTADA)' : `(status ${response.status})`;
+          console.warn(`[FlowBot AI] ${model} clave ${API_KEYS.indexOf(apiKey) + 1} ${statusMsg} → probando siguiente...`);
           continue;
         }
 
@@ -131,11 +132,11 @@ async function fetchGeminiDirect(userMessage) {
 
         const text = extractGeminiText(data);
         if (text) {
-          console.log(`[FlowBot AI] Respuesta directa por ${model} (clave ${API_KEYS.indexOf(apiKey) + 1}).`);
+          console.log(`[FlowBot AI] ✓ Respuesta servida por ${model} (clave ${API_KEYS.indexOf(apiKey) + 1})`);
           return text;
         }
       } catch (error) {
-        console.warn(`[FlowBot AI] Error directo con ${model} (clave ${API_KEYS.indexOf(apiKey) + 1}):`, error.message);
+        console.warn(`[FlowBot AI] ${model} clave ${API_KEYS.indexOf(apiKey) + 1} error: ${error.message} → probando siguiente...`);
       }
     }
   }

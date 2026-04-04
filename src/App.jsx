@@ -52,6 +52,7 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 768);
   const [viewportMetrics, setViewportMetrics] = useState(() => getViewportMetrics());
   const [navigationUrl, setNavigationUrl] = useState(null);
+  const [isAIOnline, setIsAIOnline] = useState(true);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
@@ -155,6 +156,9 @@ function App() {
 
     (async () => {
       const response = await generateBotResponse(trimmed);
+      const isOffline = response.text?.includes('no esta disponible') || response.text?.includes('intenta más tarde');
+      setIsAIOnline(!isOffline);
+      
       const botMsg = {
         id: nextId.current++,
         sender: 'bot',
@@ -554,9 +558,9 @@ function App() {
             <FlowLogo size={32} />
             <div className="header-info">
               <h1 className="header-title">FlowBot</h1>
-              <span className="header-status">
+              <span className={`header-status ${isAIOnline ? 'status-online' : 'status-offline'}`}>
                 <span className="status-dot"></span>
-                En línea
+                {isAIOnline ? 'En línea' : 'Offline'}
               </span>
             </div>
           </div>
