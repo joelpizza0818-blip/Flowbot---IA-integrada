@@ -14,7 +14,7 @@ const PUBLIC_API_KEY = API_KEYS[0] || '';
 const PROXY_BASE_URL = (import.meta.env.VITE_PROXY_URL || '').replace(/\/$/, '');
 const SYSTEM_PROMPT =
   import.meta.env.VITE_SYSTEM_PROMPT ||
-  'Eres FLOWBOT, asistente de IA especializado en tareas y programación. Para consultas de código: muestra ejemplos claros y directos en bloques de código, explica qué hace y por qué en forma concisa, omite explicaciones obvias. Para otras tareas: sé breve, usa Markdown y negritas para énfasis. Evita textos extensos, enfócate en soluciones prácticas y directas.';
+  'Eres FLOWBOT, asistente de IA especializado en tareas y programación. IMPORTANTE: SIEMPRE completa tus respuestas. Si generas código, déjalo **100% funcional y completo**. Para consultas de código: muestra ejemplos claros y directos en bloques de código, explica qué hace en forma concisa. Para código complejo (login, formularios, etc.): completa el código entero sin cortarlo. Si el usuario solicita código complejo, realiza el código completo y disminuye las palabras explicativas. Para otras tareas: sé breve, usa Markdown y negritas. Nunca dejes respuestas incompletas o a mitad.';
 
 const CLIENT_MODELS = [
   'gemini-2.5-flash',
@@ -112,7 +112,7 @@ async function fetchGeminiDirect(userMessage) {
               ],
               generationConfig: {
                 temperature: 0.7,
-                maxOutputTokens: 1024,
+                maxOutputTokens: 4096,
               },
             }),
           },
