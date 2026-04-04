@@ -508,9 +508,7 @@ const decisionRules = [
   {
     intentId: 'visualizar',
     triggerKeywords: [
-      'ver', 'mostrar', 'visualizar', 'consultar', 'explorar', 'examinar',
-      'abrir', 'cargar', 'desplegar', 'presentar', 'exhibir', 'enseñar',
-      'previsualizar', 'renderizar', 'proyectar',
+      'ver',
     ],
     action: 'open_search',
     queryExtraction: true,
@@ -669,222 +667,13 @@ const decisionRules = [
 
 decisionRules.sort((a, b) => b.priority - a.priority);
 
-const conversationalFallbackGroups = [
-  {
-    id: 'saludos',
-    name: 'Saludos',
-    keywords: [
-      'hola', 'hello', 'hi', 'hey', 'buenas', 'saludos', 'buen dia',
-      'buen día', 'buenos dias', 'buenos días', 'buenas tardes',
-      'buenas noches', 'holi', 'holis', 'hola hola', 'ey', 'eyy',
-      'qué tal', 'que tal', 'qué hay', 'que hay', 'cómo estás',
-      'como estas', 'cómo va', 'como va', 'todo bien', 'cómo amaneciste',
-      'como amaneciste', 'qué cuentas', 'que cuentas', 'cómo todo',
-      'como todo', 'que más', 'qué más', 'buen verte', 'un gusto',
-    ],
-  },
-  {
-    id: 'cortesia',
-    name: 'Cortesía',
-    keywords: [
-      'gracias', 'muchas gracias', 'mil gracias', 'te lo agradezco',
-      'agradecido', 'agradecida', 'se agradece', 'gracias totales',
-      'por favor', 'porfa', 'porfis', 'porfa plis', 'porfis plis',
-      'disculpa', 'discúlpame', 'disculpame', 'perdón', 'perdon',
-      'permiso', 'con permiso', 'sorry', 'lo siento', 'te agradezco',
-    ],
-  },
-  {
-    id: 'afirmacion',
-    name: 'Afirmación',
-    keywords: [
-      'si', 'sí', 'claro', 'vale', 'ok', 'okay', 'okey', 'de acuerdo',
-      'correcto', 'entendido', 'perfecto', 'genial', 'excelente',
-      'listo', 'dale', 'continua', 'continúa', 'va', 'va bien',
-      'está bien', 'esta bien', 'todo bien', 'exacto', 'así es',
-      'asi es', 'tal cual', 'me sirve', 'me va bien', 'funciona',
-    ],
-  },
-  {
-    id: 'negacion',
-    name: 'Negación',
-    keywords: [
-      'no', 'nop', 'nope', 'negativo', 'para nada', 'todavia no',
-      'todavía no', 'aun no', 'aún no', 'no gracias', 'mejor no',
-      'olvidalo', 'olvídalo', 'descarta eso',
-    ],
-  },
-  {
-    id: 'relleno',
-    name: 'Relleno Conversacional',
-    keywords: [
-      'oye', 'mira', 'bueno', 'pues', 'entonces', 'aja', 'ajá', 'mmm',
-      'mm', 'eh', 'em', 'este', 'sabes', 'dime', 'cuentame', 'cuéntame',
-      'a ver', 'veamos', 'pues nada', 'en fin', 'o sea', 'osea',
-      'digamos', 'basicamente', 'básicamente', 'literal', 'tipo',
-      'como que', 'más o menos', 'mas o menos',
-    ],
-  },
-  {
-    id: 'preguntas_comunes',
-    name: 'Preguntas Comunes',
-    keywords: [
-      'cómo', 'como', 'qué es', 'que es', 'por qué', 'por que', 'para qué',
-      'para que', 'dónde', 'donde', 'cuándo', 'cuando', 'cuál', 'cual',
-      'cuánto', 'cuanto', 'quién', 'quien', 'qué pasa', 'que pasa',
-      'qué onda', 'que onda', 'cómo así', 'como asi', 'qué sucede',
-      'que sucede', 'qué ocurre', 'que ocurre', 'qué significa',
-      'que significa', 'me explicas', 'me explicas eso',
-    ],
-  },
-  {
-    id: 'identidad_bot',
-    name: 'Identidad del Bot',
-    keywords: [
-      'qué eres', 'que eres', 'quién eres', 'quien eres', 'qué haces',
-      'que haces', 'qué puedes hacer', 'que puedes hacer', 'para qué sirves',
-      'para que sirves', 'eres un bot', 'eres una ia', 'eres inteligencia artificial',
-      'cómo funcionas', 'como funcionas', 'de qué tratas', 'de que tratas',
-      'cuál es tu función', 'cual es tu funcion', 'quién te hizo',
-      'quien te hizo', 'qué sabes hacer', 'que sabes hacer',
-    ],
-  },
-  {
-    id: 'estado_social',
-    name: 'Estado y Trato',
-    keywords: [
-      'cómo estás', 'como estas', 'qué tal', 'que tal', 'cómo te va',
-      'como te va', 'cómo andas', 'como andas', 'todo bien', 'cómo vas',
-      'como vas', 'cómo va todo', 'como va todo', 'qué hay de nuevo',
-      'que hay de nuevo', 'cómo sigues', 'como sigues', 'cómo va tu día',
-      'como va tu dia',
-    ],
-  },
-  {
-    id: 'presentaciones',
-    name: 'Presentaciones',
-    keywords: [
-      'me llamo', 'mi nombre es', 'soy', 'soy yo', 'mucho gusto',
-      'encantado', 'encantada', 'un placer', 'a tus ordenes', 'a tus órdenes',
-    ],
-  },
-  {
-    id: 'reacciones',
-    name: 'Reacciones',
-    keywords: [
-      'jaja', 'jeje', 'jojo', 'jajaja', 'jejeje', 'wow', 'guau', 'ups',
-      'vaya', 'ah bueno', 'oh', 'ah', 'increible', 'increíble', 'genial',
-      'cool', 'brutal', 'uff',
-    ],
-  },
-  {
-    id: 'despedidas',
-    name: 'Despedidas',
-    keywords: [
-      'adiós', 'adios', 'chao', 'chau', 'nos vemos', 'hasta luego',
-      'hasta pronto', 'bye', 'goodbye', 'hasta la próxima',
-      'hasta la proxima', 'cuídate', 'cuidate', 'hablamos luego',
-      'hablamos', 'me voy', 'ya me voy',
-    ],
-  },
-];
 
-const conversationalResponseRules = [
-  {
-    id: 'identity',
-    keywords: [
-      'qué eres', 'que eres', 'quién eres', 'quien eres', 'qué haces',
-      'que haces', 'qué puedes hacer', 'que puedes hacer', 'para qué sirves',
-      'para que sirves', 'eres un bot', 'eres una ia', 'eres inteligencia artificial',
-      'cómo funcionas', 'como funcionas', 'qué sabes hacer', 'que sabes hacer',
-    ],
-    text:
-      '**Soy FlowBot**, un asistente conversacional enfocado en detectar intenciones dentro de tus mensajes. Puedo ayudarte a **ver**, **buscar**, **crear**, **editar**, **enviar**, **proteger** y **automatizar** tareas.',
-    iconName: 'ayuda',
-  },
-  {
-    id: 'mood',
-    keywords: [
-      'cómo estás', 'como estas', 'qué tal', 'que tal', 'cómo te va',
-      'como te va', 'cómo andas', 'como andas', 'cómo vas', 'como vas',
-      'todo bien', 'cómo va todo', 'como va todo',
-    ],
-    text:
-      '**Estoy bien y listo para ayudarte.** Si quieres, dime una acción concreta y seguimos: **ver**, **buscar**, **crear**, **editar** o **automatizar**.',
-    iconName: 'ayuda',
-  },
-  {
-    id: 'thanks',
-    keywords: [
-      'gracias', 'muchas gracias', 'mil gracias', 'te lo agradezco',
-      'agradecido', 'agradecida', 'se agradece',
-    ],
-    text:
-      '**Con gusto.** Si quieres, seguimos con otra consulta o con una tarea nueva.',
-    iconName: 'ayuda',
-  },
-  {
-    id: 'farewell',
-    keywords: [
-      'adiós', 'adios', 'chao', 'chau', 'nos vemos', 'hasta luego',
-      'hasta pronto', 'bye', 'goodbye', 'cuídate', 'cuidate',
-    ],
-    text:
-      '**Hasta luego.** Cuando quieras volver, aquí sigo para ayudarte con otra tarea.',
-    iconName: 'ayuda',
-  },
-  {
-    id: 'affirmation',
-    keywords: [
-      'ok', 'okay', 'okey', 'vale', 'de acuerdo', 'entendido',
-      'perfecto', 'listo', 'dale', 'exacto',
-    ],
-    text:
-      '**Perfecto.** Cuando quieras, dime la acción concreta y seguimos.',
-    iconName: 'ayuda',
-  },
-];
 
-const fallbackActionHints = [
-  'ver', 'revisar', 'analizar', 'crear', 'generar', 'editar', 'actualizar',
-  'buscar', 'encontrar', 'informar', 'documentar', 'enviar', 'compartir',
-  'proteger', 'automatizar',
-];
 
-const noIntentFallbackResponses = [
-  '**¡Oops!** No estoy preparado para eso todavía. Pero si usas palabras como ${hints}, puedo activar mis superpoderes.',
-  '**¡Ups!** Eso me tomó por sorpresa. Intenta con acciones como ${hints} y verás la magia.',
-  '**¡Vaya!** No supe qué hacer con eso. Prueba algo como ${hints} para que pueda ayudarte.',
-  '**¡Oops!** Parece que mi radar de intenciones no captó nada. Usa verbos como ${hints}.',
-  '**Eso no está en mi lista** de acciones reconocidas. Pero puedo trabajar con: ${hints}.',
-  '**Hmm, eso no lo tengo en mi vocabulario.** Mis palabras mágicas son: ${hints}.',
-  '**No encontré esa acción en mi repertorio.** Te cuento las que sí manejo: ${hints}.',
-  '**Eso se escapa de mi diccionario.** Pero conozco bien estas: ${hints}.',
-  '**Me quedé pensando...** y no logré descifrar qué necesitas. ¿Qué tal si pruebas con ${hints}?',
-  '**Hmm, me agarraste fuera de base.** Prueba con verbos como ${hints} y estaré listo.',
-  '**¿Eso qué fue?** Jaja, no lo entendí. Mejor intenta con: ${hints}.',
-  '**Mi cerebro de bot hizo cortocircuito.** Reiniciando... Prueba con: ${hints}.',
-  '**Error 404: intención no encontrada.** Pero tranqui, si dices algo como ${hints}, volvemos al ruedo.',
-  '**¡Casi!** No detecté una acción clara, pero estoy seguro de que si usas ${hints}, lo lograremos.',
-  '**No me rindo fácil,** pero necesito una pista. Prueba con: ${hints}.',
-  '**Estoy listo para ayudarte,** solo necesito que uses palabras como: ${hints}.',
-  '**¡Sigo aquí!** Solo necesito que me des una acción concreta: ${hints}.',
-  '**No logré identificar una acción específica.** Prueba con: ${hints}.',
-  '**No capté ninguna intención en tu mensaje.** Palabras clave que entiendo: ${hints}.',
-  '**Tu mensaje no activó ningún grupo.** Las acciones que manejo son: ${hints}.',
-  '**Soy un bot, no un adivino.** Pero si me dices algo con ${hints}, te sorprenderé.',
-  '**Eso suena interesante, pero no sé qué hacer con ello.** Mis especialidades: ${hints}.',
-  '**Si fuera humano, te pediría que lo repitas.** Como soy bot, te sugiero usar: ${hints}.',
-  '**No nací ayer, pero tampoco entendí eso.** Intentemos de nuevo con: ${hints}.',
-  '**¡Me dejaste en blanco!** Ayúdame a ayudarte usando: ${hints}.',
-  '**Mi detector de intenciones se quedó en silencio.** Dale vida con: ${hints}.',
-  '**Interesante... pero no tengo una respuesta para eso.** ¿Qué tal si pruebas con ${hints}?',
-  '**Parece que hablamos idiomas distintos por ahora.** Mis palabras favoritas: ${hints}.',
-  '**Eso no encaja en ninguna de mis categorías.** Pero si mencionas ${hints}, conecto enseguida.',
-  '**Busqué en todos mis archivos y no encontré coincidencia.** Prueba estas: ${hints}.',
-];
 
-const greetingGroup = conversationalFallbackGroups.find((group) => group.id === 'saludos');
+
+
+
 
 const searchIntroFillers = new Set(
   [
@@ -999,18 +788,7 @@ function extractQueryForIntent(userMessage, intentId) {
   return query ? query : '';
 }
 
-function getConversationalResponse(userMessage) {
-  for (const rule of conversationalResponseRules) {
-    if (matchKeywords(userMessage, rule.keywords).length > 0) {
-      return { text: rule.text, iconName: rule.iconName };
-    }
-  }
-  return null;
-}
 
-function getFallbackHintText() {
-  return fallbackActionHints.map((hint) => `**${hint}**`).join(', ');
-}
 
 export function analyzeMessage(userMessage) {
   return intentGroups
@@ -1085,44 +863,10 @@ export function resolveActions(userMessage) {
 
 export async function generateBotResponse(userMessage) {
   const trimmed = userMessage.trim();
-  if (!trimmed) {
-    return {
-      text: 'Por favor, escribe algo para que pueda ayudarte.',
-      intents: [],
-      actions: [],
-      isGreeting: false,
-      iconName: 'ayuda',
-    };
-  }
-
-  const isGreeting = matchKeywords(trimmed, greetingGroup.keywords).length > 0;
   const intents = analyzeMessage(trimmed);
-  const conversationalResponse = getConversationalResponse(trimmed);
-
-  if (conversationalResponse && intents.length === 0) {
-    return {
-      text: conversationalResponse.text,
-      intents: [],
-      actions: [],
-      isGreeting: isGreeting,
-      iconName: conversationalResponse.iconName,
-    };
-  }
-
-  if (isGreeting && intents.length === 0) {
-    return {
-      text: '**¡Hola! Soy FlowBot**, tu asistente inteligente. Puedo ayudarte con múltiples tareas como **visualizar datos**, **crear contenido**, **buscar información**, **automatizar procesos** y mucho más. Cuéntame qué necesitas.',
-      intents: [],
-      actions: [],
-      isGreeting: true,
-      iconName: 'ayuda',
-    };
-  }
 
   if (intents.length === 0) {
-    // Intentar con Gemini AI (fetchGeminiAI ahora sí está definida)
     const geminiText = await fetchGeminiAI(trimmed);
-
     if (geminiText) {
       return {
         text: geminiText,
@@ -1132,14 +876,11 @@ export async function generateBotResponse(userMessage) {
         iconName: 'ayuda',
       };
     }
+  }
 
-    // Fallback clásico si la IA también falla
-    const hints = getFallbackHintText();
-    const template = pickRandomResponse(noIntentFallbackResponses);
-    const text = template.replace('${hints}', hints);
-
+  if (intents.length === 0) {
     return {
-      text,
+      text: null,
       intents: [],
       actions: [],
       isGreeting: false,
@@ -1159,9 +900,6 @@ export async function generateBotResponse(userMessage) {
 }
 
 export {
-  conversationalFallbackGroups,
-  conversationalResponseRules,
   decisionRules,
-  fallbackActionHints,
   intentGroups,
 };
