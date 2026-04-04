@@ -1,14 +1,14 @@
 const AI_UNAVAILABLE_MESSAGE =
   'El modelo de IA no esta disponible en este momento. Intenta de nuevo en unos minutos.';
 
-// Sistema de fallback para claves API
-const API_KEYS = [
-  import.meta.env.VITE_GEMINI_API_KEY || '',
-  'AIzaSyA6FeBzvB6ADWQiWR4LHQzDvevmt121eGk',
-  'AIzaSyCzk_OcnYpPRQOCX5J0IfiLhijsEB5YORI',
-  'AIzaSyDKVYWW_9xp9elpogfpM6JoZarb4uYbOkg',
-  'AIzaSyB6D4ydwqmKD9cB2dLflbgQWPVUf9Kg6uU',
+const PRIMARY_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const FALLBACK_API_KEYS = [
+  import.meta.env.VITE_GEMINI_API_KEY_FALLBACK_1 || '',
+  import.meta.env.VITE_GEMINI_API_KEY_FALLBACK_2 || '',
+  import.meta.env.VITE_GEMINI_API_KEY_FALLBACK_3 || '',
+  import.meta.env.VITE_GEMINI_API_KEY_FALLBACK_4 || '',
 ].filter(key => key && key.length > 0);
+const API_KEYS = PRIMARY_API_KEY ? [PRIMARY_API_KEY, ...FALLBACK_API_KEYS] : FALLBACK_API_KEYS;
 
 const PUBLIC_API_KEY = API_KEYS[0] || '';
 const PROXY_BASE_URL = (import.meta.env.VITE_PROXY_URL || '').replace(/\/$/, '');

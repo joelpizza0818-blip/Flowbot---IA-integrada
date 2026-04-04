@@ -277,7 +277,7 @@ function App() {
     } else if (actionId === 'toggle_sidebar') {
       setSidebarOpen((prev) => !prev);
     } else if (actionId === 'open_console') {
-      console.log('%c🔧 FLOWBOT CONSOLE ABIERTA', 'color: #00ff00; font-size: 18px; font-weight: bold; text-shadow: 0 0 10px #00ff00');
+      console.log('%c FLOWBOT CONSOLE ABIERTA BRO', 'color: #00ff00; font-size: 18px; font-weight: bold; text-shadow: 0 0 10px #00ff00');
       console.log('%cAcciones disponibles:', 'color: #0088ff; font-size: 14px; font-weight: bold');
       console.log('%c• fullscreen, sidebar, reload, print, scroll_top, scroll_bottom', 'color: #00d4ff; font-size: 12px');
       console.log('%c• clear_chat, search, youtube, scan, encryption, timer', 'color: #00d4ff; font-size: 12px');
