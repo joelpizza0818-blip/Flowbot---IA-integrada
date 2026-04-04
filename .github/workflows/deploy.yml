@@ -37,6 +37,8 @@ jobs:
         run: npm run build
         env:
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          VITE_GEMINI_API_KEY_FALLBACK: ${{ secrets.VITE_GEMINI_API_KEY_FALLBACK }}
+          VITE_GEMINI_API_KEY_FALLBACK_2: ${{ secrets.VITE_GEMINI_API_KEY_FALLBACK_2 }}
           VITE_SYSTEM_PROMPT: ${{ secrets.VITE_SYSTEM_PROMPT }}
           VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
           VITE_BASE_PATH: /Flowbot---IA-integrada/
@@ -68,6 +70,8 @@ jobs:
         run: npm run build
         env:
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          VITE_GEMINI_API_KEY_FALLBACK: ${{ secrets.VITE_GEMINI_API_KEY_FALLBACK }}
+          VITE_GEMINI_API_KEY_FALLBACK_2: ${{ secrets.VITE_GEMINI_API_KEY_FALLBACK_2 }}
           VITE_SYSTEM_PROMPT: ${{ secrets.VITE_SYSTEM_PROMPT }}
           VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
           VITE_BASE_PATH: /Flowbot---IA-integrada/

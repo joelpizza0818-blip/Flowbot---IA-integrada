@@ -9,7 +9,11 @@ const distDir = path.join(__dirname, 'dist');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
-const geminiApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
+const primaryApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
+const fallbackApiKey1 = process.env.GEMINI_API_KEY_FALLBACK || process.env.VITE_GEMINI_API_KEY_FALLBACK || 'AIzaSyBPByzeKroMfdB2BPfmmxe6gfT_p-yxI6w';
+const fallbackApiKey2 = process.env.GEMINI_API_KEY_FALLBACK_2 || process.env.VITE_GEMINI_API_KEY_FALLBACK_2 || 'AIzaSyBeY6mJ-Ci8O5c21YnwOHtSaPa-7MD2KKw';
+const apiKeys = primaryApiKey ? [primaryApiKey, fallbackApiKey1, fallbackApiKey2] : [fallbackApiKey1, fallbackApiKey2];
+const geminiApiKey = apiKeys[0] || '';
 const systemPrompt =
   process.env.FLOWBOT_SYSTEM_PROMPT ||
   process.env.VITE_SYSTEM_PROMPT ||
@@ -66,9 +70,9 @@ function extractTextFromGemini(data) {
     .trim();
 }
 
-async function requestGemini(model, userMessage) {
+async function requestGemini(model, userMessage, apiKey) {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -100,42 +104,45 @@ app.post('/api/flowbot-proxy', async (req, res) => {
 
   let lastError = 'No fue posible obtener una respuesta del modelo.';
 
-  for (const model of modelCandidates) {
-    try {
-      const { response, data } = await requestGemini(model, userMessage);
+  for (const apiKey of apiKeys) {
+    for (const model of modelCandidates) {
+      try {
+        const { response, data } = await requestGemini(model, userMessage, apiKey);
 
-      if (!response.ok) {
-        lastError = data?.error?.message || `Gemini devolvio status ${response.status}.`;
+        if (!response.ok) {
+          lastError = data?.error?.message || `Gemini devolvio status ${response.status}.`;
 
-        if (response.status === 401 || response.status === 403) {
-          return res.status(502).json({ error: 'La clave del servidor fue rechazada por Gemini.' });
-        }
+          if (response.status === 401 || response.status === 403) {
+            console.warn(`[FlowBot Proxy] API key rechazada (${apiKey.slice(0, 10)}...)`);
+            break; // Salta a la siguiente clave API
+          }
 
-        if ([400, 429, 500, 503].includes(response.status)) {
+          if ([400, 429, 500, 503].includes(response.status)) {
+            continue; // Intenta el siguiente modelo
+          }
+
           continue;
         }
 
-        continue;
-      }
+        const finishReason = data?.candidates?.[0]?.finishReason;
+        if (finishReason === 'SAFETY' || finishReason === 'RECITATION') {
+          return res.json({
+            text: 'No puedo responder a esa consulta por politicas de seguridad.',
+            model,
+            finishReason,
+          });
+        }
 
-      const finishReason = data?.candidates?.[0]?.finishReason;
-      if (finishReason === 'SAFETY' || finishReason === 'RECITATION') {
-        return res.json({
-          text: 'No puedo responder a esa consulta por politicas de seguridad.',
-          model,
-          finishReason,
-        });
-      }
+        const text = extractTextFromGemini(data);
+        if (text) {
+          return res.json({ text, model });
+        }
 
-      const text = extractTextFromGemini(data);
-      if (text) {
-        return res.json({ text, model });
+        lastError = `El modelo ${model} devolvio una respuesta vacia.`;
+      } catch (error) {
+        lastError = error.message;
+        console.error(`[FlowBot Proxy] Error con ${model}:`, error.message);
       }
-
-      lastError = `El modelo ${model} devolvio una respuesta vacia.`;
-    } catch (error) {
-      lastError = error.message;
-      console.error(`[FlowBot Proxy] Error con ${model}:`, error.message);
     }
   }
 

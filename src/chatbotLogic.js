@@ -3,10 +3,8 @@ const AI_UNAVAILABLE_MESSAGE =
 
 const PRIMARY_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const FALLBACK_API_KEYS = [
-  import.meta.env.VITE_GEMINI_API_KEY_FALLBACK_1 || '',
+  import.meta.env.VITE_GEMINI_API_KEY_FALLBACK || '',
   import.meta.env.VITE_GEMINI_API_KEY_FALLBACK_2 || '',
-  import.meta.env.VITE_GEMINI_API_KEY_FALLBACK_3 || '',
-  import.meta.env.VITE_GEMINI_API_KEY_FALLBACK_4 || '',
 ].filter(key => key && key.length > 0);
 const API_KEYS = PRIMARY_API_KEY ? [PRIMARY_API_KEY, ...FALLBACK_API_KEYS] : FALLBACK_API_KEYS;
 
