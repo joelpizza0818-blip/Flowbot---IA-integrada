@@ -51,6 +51,7 @@ function App() {
   const [timerAlert, setTimerAlert] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 768);
   const [viewportMetrics, setViewportMetrics] = useState(() => getViewportMetrics());
+  const [navigationUrl, setNavigationUrl] = useState(null);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
@@ -72,6 +73,12 @@ function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    if (navigationUrl) {
+      window.location.href = navigationUrl;
+    }
+  }, [navigationUrl]);
 
   useEffect(() => {
     const inputElement = inputRef.current;
@@ -296,12 +303,12 @@ function App() {
     } else if (actionId === 'open_search') {
       const searchTerm = prompt('¿Qué deseas buscar?');
       if (searchTerm) {
-        window.location.href = `https://www.google.com/search?q=${encodeURIComponent(searchTerm)}`;
+        setNavigationUrl(`https://www.google.com/search?q=${encodeURIComponent(searchTerm)}`);
       }
     } else if (actionId === 'open_youtube') {
       const searchTerm = prompt('¿Qué deseas buscar en video?');
       if (searchTerm) {
-        window.location.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchTerm)}`;
+        setNavigationUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(searchTerm)}`);
       }
     }
     

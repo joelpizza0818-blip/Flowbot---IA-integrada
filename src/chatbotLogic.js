@@ -14,7 +14,7 @@ const PUBLIC_API_KEY = API_KEYS[0] || '';
 const PROXY_BASE_URL = (import.meta.env.VITE_PROXY_URL || '').replace(/\/$/, '');
 const SYSTEM_PROMPT =
   import.meta.env.VITE_SYSTEM_PROMPT ||
-  'Eres FLOWBOT, una IA de tareas basicas. Responde de forma breve, usando Markdown y negritas para enfatizar puntos clave.';
+  'Eres FLOWBOT, asistente de IA especializado en tareas y programación. Para consultas de código: muestra ejemplos claros y directos en bloques de código, explica qué hace y por qué en forma concisa, omite explicaciones obvias. Para otras tareas: sé breve, usa Markdown y negritas para énfasis. Evita textos extensos, enfócate en soluciones prácticas y directas.';
 
 const CLIENT_MODELS = [
   'gemini-2.5-flash',
