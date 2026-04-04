@@ -2,13 +2,26 @@
 
 const AI_UNAVAILABLE_MESSAGE =
   'El modelo de IA no esta disponible en este momento. Intenta de nuevo en unos minutos.';
-const PUBLIC_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+
+// Sistema de fallback para claves API
+const API_KEYS = [
+  import.meta.env.VITE_GEMINI_API_KEY || '',
+  'AIzaSyA6FeBzvB6ADWQiWR4LHQzDvevmt121eGk',  // Clave 2
+  'AIzaSyCzk_OcnYpPRQOCX5J0IfiLhijsEB5YORI',  // Clave 3
+  'AIzaSyDKVYWW_9xp9elpogfpM6JoZarb4uYbOkg',  // Clave 4
+  'AIzaSyB6D4ydwqmKD9cB2dLflbgQWPVUf9Kg6uU',  // Clave 5
+].filter(key => key && key.length > 0);
+
+const PUBLIC_API_KEY = API_KEYS[0] || '';
 const PROXY_BASE_URL = (import.meta.env.VITE_PROXY_URL || '').replace(/\/$/, '');
 const SYSTEM_PROMPT =
   import.meta.env.VITE_SYSTEM_PROMPT ||
   'Eres FLOWBOT, una IA de tareas basicas. Responde de forma breve, usando Markdown y negritas para enfatizar puntos clave.';
+
+// Modelos con fallback degradativo
 const CLIENT_MODELS = [
   'gemini-2.5-flash',
+  'gemini-2.5-light',
   'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
   'gemini-flash-latest',
@@ -78,53 +91,56 @@ async function fetchGeminiViaProxy(userMessage) {
 }
 
 async function fetchGeminiDirect(userMessage) {
-  if (!PUBLIC_API_KEY) {
+  if (!API_KEYS || API_KEYS.length === 0) {
     return null;
   }
 
-  for (const model of CLIENT_MODELS) {
-    try {
-      const { response, data } = await fetchJsonWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${PUBLIC_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system_instruction: {
-              parts: [{ text: SYSTEM_PROMPT }],
-            },
-            contents: [
-              {
-                role: 'user',
-                parts: [{ text: userMessage }],
+  // Intentar con cada combinación de clave API y modelo
+  for (const apiKey of API_KEYS) {
+    for (const model of CLIENT_MODELS) {
+      try {
+        const { response, data } = await fetchJsonWithTimeout(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              system_instruction: {
+                parts: [{ text: SYSTEM_PROMPT }],
               },
-            ],
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 1024,
-            },
-          }),
-        },
-        12000,
-      );
+              contents: [
+                {
+                  role: 'user',
+                  parts: [{ text: userMessage }],
+                },
+              ],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 1024,
+              },
+            }),
+          },
+          12000,
+        );
 
-      if (!response.ok) {
-        console.warn(`[FlowBot AI] ${model} respondio con status ${response.status}.`);
-        continue;
-      }
+        if (!response.ok) {
+          console.warn(`[FlowBot AI] ${model} (clave ${API_KEYS.indexOf(apiKey) + 1}) respondio con status ${response.status}.`);
+          continue;
+        }
 
-      const finishReason = data?.candidates?.[0]?.finishReason;
-      if (finishReason === 'SAFETY' || finishReason === 'RECITATION') {
-        return 'No puedo responder a esa consulta por politicas de seguridad.';
-      }
+        const finishReason = data?.candidates?.[0]?.finishReason;
+        if (finishReason === 'SAFETY' || finishReason === 'RECITATION') {
+          return 'No puedo responder a esa consulta por politicas de seguridad.';
+        }
 
-      const text = extractGeminiText(data);
-      if (text) {
-        console.log(`[FlowBot AI] Respuesta directa por ${model}.`);
-        return text;
+        const text = extractGeminiText(data);
+        if (text) {
+          console.log(`[FlowBot AI] Respuesta directa por ${model} (clave ${API_KEYS.indexOf(apiKey) + 1}).`);
+          return text;
+        }
+      } catch (error) {
+        console.warn(`[FlowBot AI] Error directo con ${model} (clave ${API_KEYS.indexOf(apiKey) + 1}):`, error.message);
       }
-    } catch (error) {
-      console.warn(`[FlowBot AI] Error directo con ${model}:`, error.message);
     }
   }
 

@@ -1,85 +1,275 @@
-# FlowBot
+# FlowBot — Asistente Inteligente de IA
 
-FlowBot es un chatbot hecho con React, Vite y Express. Ahora soporta un despliegue hibrido:
+<div align="center">
 
-- En GitHub Pages funciona como sitio estatico publico.
-- Si existe un proxy backend, el frontend lo usa primero.
-- Si no existe proxy, cae a Gemini directo desde el navegador usando una `VITE_GEMINI_API_KEY` publica y restringida por dominio.
+**Un chatbot moderno e inteligente impulsado por Google Gemini, construido con React y desplegable en cualquier plataforma.**
 
-## Como funciona el modo hibrido
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/react-19.2.4-61dafb.svg)](https://react.dev/)
 
-1. El frontend intenta `VITE_PROXY_URL/api/flowbot-proxy` o `/api/flowbot-proxy`.
-2. Si el proxy responde, la key privada vive solo en el servidor.
-3. Si el proxy no existe, usa Gemini directo desde el cliente.
+[Demo en Vivo](#) • [Documentación](#características) • [Contribuir](#contribución)
 
-Esto permite:
+</div>
 
-- GitHub Pages hoy.
-- Proxy externo despues, sin rehacer el frontend.
+---
 
-## Variables de entorno
+## Descripción
 
-Usa `.env.example` como referencia.
+**FlowBot** es una solución completa de chatbot conversacional con IA integrada. Ofrece una experiencia de usuario fluida con detección inteligente de intenciones, soporte para markdown en respuestas de IA y un diseño moderno con tema oscuro neon.
 
-### Frontend para GitHub Pages
+Diseñado para ser desplegable tanto en **GitHub Pages** como en infraestructura propia, FlowBot combina flexibilidad de despliegue con arquitectura segura.
 
-```bash
-VITE_GEMINI_API_KEY=replace-with-restricted-public-key
-VITE_SYSTEM_PROMPT=Eres FLOWBOT, una IA de tareas basicas. Responde de forma breve, usando Markdown y negritas para enfatizar puntos clave.
-VITE_PROXY_URL=
-VITE_BASE_PATH=/Flowbot---IA-integrada/
+---
+
+## ✨ Características Principales
+
+- **🤖 IA Inteligente** — Integración con Google Gemini API para conversaciones naturales
+- **🎨 Diseño Moderno** — Interfaz elegante con tema oscuro y acentos neon
+- **📱 Responsive** — Optimizado para desktop, tablet y mobile con teclado virtual
+- **🔐 Seguridad Híbrida** — Soporte para proxy backend seguro o API directa restringida
+- **📝 Markdown Completo** — Renderización de markdown con bloques de código resaltados
+- **⚡ Rendimiento** — Stack moderno con Vite, React 19 y Express
+- **🚀 Despliegue Flexible** — GitHub Pages, servidores propios o cloud providers
+- **🧠 Detección de Intenciones** — Análisis contextual de mensajes con acciones automáticas
+
+---
+
+## 🏗️ Arquitectura
+
+### Despliegue Híbrido
+
+FlowBot utiliza un sistema inteligente de fallback:
+
+```
+┌─────────────────────────────────────┐
+│   Frontend (React + Vite)           │
+└────────────┬────────────────────────┘
+             │
+             ├─→ 1️⃣ Intenta Backend Proxy
+             │        ↓ (Si no existe)
+             │
+             └─→ 2️⃣ Fallback a Gemini Directo
+                     (Clave pública restringida)
 ```
 
-### Backend opcional
+**Ventajas:**
+- Despliegue inmediato en GitHub Pages sin backend
+- Migración fácil a un proxy seguro cuando sea necesario
+- Sin cambios en el frontend
+
+---
+
+## 🚀 Quick Start
+
+### Requisitos
+- **Node.js** ≥ 20.0.0
+- **npm** o **yarn**
+
+### Instalación Local
 
 ```bash
-GEMINI_API_KEY=replace-with-server-key
-GEMINI_MODELS=gemini-2.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-flash-latest
-FLOWBOT_SYSTEM_PROMPT=Eres FLOWBOT, una IA de tareas basicas. Responde de forma breve, usando Markdown y negritas para enfatizar puntos clave.
-CORS_ORIGINS=https://joelpizza0818-blip.github.io
-```
+# Clonar repositorio
+git clone https://github.com/tu-usuario/flowbot.git
+cd flowbot
 
-## Desarrollo local
-
-```bash
+# Instalar dependencias
 npm install
+
+# Configurar variables de entorno
+cp .env.example .env
+```
+
+### Desarrollo
+
+```bash
+# Terminal 1: Backend (Express)
 npm run dev:server
+
+# Terminal 2: Frontend (Vite + React)
 npm run dev
 ```
 
-- `npm run dev:server` levanta Express en `http://localhost:3000`
-- `npm run dev` levanta Vite en `http://localhost:5173`
-- Vite reenvia `/api` al backend local
+Accede a `http://localhost:5173`
 
-## GitHub Pages
-
-El workflow de [deploy.yml](./.github/workflows/deploy.yml) publica automaticamente en Pages al hacer push a `main`.
-
-Configura estos secretos del repositorio:
-
-- `VITE_GEMINI_API_KEY`
-- `VITE_SYSTEM_PROMPT`
-- `VITE_PROXY_URL` opcional
-
-### Recomendacion de seguridad para la key publica
-
-La `VITE_GEMINI_API_KEY` debe estar restringida en Google:
-
-- Restriccion por HTTP referrer al dominio `https://joelpizza0818-blip.github.io/*`
-- Restriccion por API solo a Gemini Developer API si tu panel lo permite
-
-## Backend opcional
-
-Si luego despliegas el proxy en otro host:
+### Construcción para Producción
 
 ```bash
-VITE_BASE_PATH=/ npm run build
+npm run build
 npm start
 ```
 
-Configura `VITE_PROXY_URL` en Pages apuntando a ese backend y `CORS_ORIGINS` con el dominio de GitHub Pages.
+---
 
-## Verificacion rapida
+## ⚙️ Configuración
 
-- `GET /api/health` confirma si el backend esta arriba y si la IA esta configurada.
-- `POST /api/flowbot-proxy` recibe `{ "userMessage": "hola" }`.
+### Variables de Entorno
+
+#### Frontend (GitHub Pages / Vite)
+```env
+VITE_GEMINI_API_KEY=your-restricted-public-key-here
+VITE_SYSTEM_PROMPT=Tu instrucción personalizada para el bot
+VITE_PROXY_URL=https://api.tudominio.com  # Opcional
+VITE_BASE_PATH=/flowbot/                   # URL del sitio en Pages
+```
+
+#### Backend (Opcional - Express)
+```env
+GEMINI_API_KEY=your-full-server-key-here
+GEMINI_MODELS=gemini-2.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-flash-latest
+FLOWBOT_SYSTEM_PROMPT=Instrucción del bot para operaciones del servidor
+CORS_ORIGINS=https://tu-github-pages-url.io
+```
+
+> **⚠️ Seguridad:** Nunca commitees `.env` con claves reales. Usa GitHub Secrets en CI/CD.
+
+---
+
+## 📦 Estructura del Proyecto
+
+```
+flowbot/
+├── src/
+│   ├── components/
+│   │   ├── ChatMessage.jsx      # Renderización de mensajes con Markdown
+│   │   ├── FlowLogo.jsx         # Logo del bot
+│   │   └── IntentIcon.jsx       # Iconografía de intenciones
+│   ├── App.jsx                  # Componente principal
+│   ├── App.css                  # Estilos globales
+│   ├── chatbotLogic.js          # Lógica de IA y procesamiento
+│   └── main.jsx                 # Punto de entrada
+├── server.js                    # Servidor Express (backend opcional)
+├── vite.config.js              # Configuración Vite
+├── package.json                 # Dependencias
+├── .env.example                 # Template de variables
+└── Dockerfile                   # Para despliegue containerizado
+```
+
+---
+
+## 🌐 Despliegue
+
+### GitHub Pages (Recomendado para Inicio Rápido)
+
+1. **Fork/Clone** el repositorio
+2. **Configura secrets** en `Settings → Secrets and variables → Actions`:
+   - `VITE_GEMINI_API_KEY`
+   - `VITE_SYSTEM_PROMPT`
+   - `VITE_PROXY_URL` (opcional)
+
+3. **Push** a `main` — el workflow en `.github/workflows/deploy.yml` publica automáticamente
+
+4. Tu sitio estará en: `https://tu-usuario.github.io/flowbot/`
+
+### Servidor Propio / Cloud (Production)
+
+#### Docker
+
+```bash
+docker build -t flowbot .
+docker run -p 3000:3000 --env-file .env flowbot
+```
+
+#### Manual
+```bash
+npm install
+npm run build
+VITE_BASE_PATH=/ npm start
+```
+
+---
+
+## 🔒 Seguridad
+
+### Protección de Claves API
+
+#### Para VITE_GEMINI_API_KEY (Pública)
+- Restringir a HTTP referrer de tu dominio en Google Cloud Console
+- Restringir a Gemini API exclusivamente
+- Regenerar si se compromete
+
+#### Para GEMINI_API_KEY (Backend)
+- **Nunca** exponerla en el navegador
+- Usar secrets seguros en CI/CD
+- Rotar periódicamente
+- Monitorear uso en Google Cloud
+
+### CORS
+El backend valida automáticamente `CORS_ORIGINS` para prevenir accesos no autorizados.
+
+---
+
+## 📊 API Reference
+
+### Salud del Servicio
+```
+GET /api/health
+```
+Respuesta:
+```json
+{
+  "status": "ok",
+  "aiConfigured": true,
+  "proxyAvailable": true
+}
+```
+
+### Chat
+```
+POST /api/flowbot-proxy
+Content-Type: application/json
+
+{
+  "userMessage": "Hola, ¿cómo estás?"
+}
+```
+
+---
+
+## 🛠️ Desarrollo
+
+### Scripts Disponibles
+
+```bash
+npm run dev          # Inicia Vite dev server
+npm run dev:server   # Inicia Express dev server
+npm run build        # Build para producción
+npm run preview      # Preview local del build
+npm run lint         # ESLint
+npm start            # Inicia server producción
+```
+
+### Tech Stack
+- **Frontend:** React 19, Vite, CSS3
+- **Backend:** Express.js, Node.js
+- **IA:** Google Gemini API
+- **Despliegue:** GitHub Pages, Docker, Cloud
+- **Linting:** ESLint
+
+---
+
+## 🤝 Contribución
+
+Las contribuciones son bienvenidas! Por favor:
+
+1. Fork el repositorio
+2. Crea una rama: `git checkout -b feature/tu-feature`
+3. Commit cambios: `git commit -m 'Add: descripción'`
+4. Push: `git push origin feature/tu-feature`
+5. Abre un Pull Request
+
+---
+
+## 📞 Soporte
+
+Para reportar bugs, sugerencias o preguntas:
+- 📧 Abre un [Issue](https://github.com/tu-usuario/flowbot/issues)
+- 💬 Visita las [Discussions](https://github.com/tu-usuario/flowbot/discussions)
+
+---
+
+<div align="center">
+
+**Hecho con ❤️ Joel**
+
+</div>

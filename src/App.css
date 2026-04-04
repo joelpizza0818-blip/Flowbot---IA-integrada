@@ -570,6 +570,90 @@ body {
   font-style: italic;
 }
 
+/* ============================================
+   Code Block Styles
+   ============================================ */
+.code-block-wrapper {
+  position: relative;
+  margin: 8px 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background-color: #1a1a1a;
+  border: 1px solid #333333;
+}
+
+.code-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  background-color: rgba(16, 163, 127, 0.2);
+  border: 1px solid rgba(16, 163, 127, 0.4);
+  color: #10a37f;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  transition: all 0.2s ease;
+}
+
+.code-copy-btn:hover {
+  background-color: rgba(16, 163, 127, 0.35);
+  border-color: rgba(16, 163, 127, 0.6);
+}
+
+.code-copy-btn:active {
+  transform: scale(0.95);
+}
+
+.code-block {
+  background-color: #1a1a1a;
+  padding: 16px 14px 12px 14px;
+  margin: 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #e0e0e0;
+  display: block;
+}
+
+.code-content {
+  color: #e0e0e0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* IDE-like syntax highlighting */
+.code-block {
+  --keyword: #ff79c6;         /* Pink - keywords, types */
+  --string: #f1fa8c;          /* Yellow - strings */
+  --number: #f1fa8c;          /* Yellow - numbers */
+  --function: #8be9fd;        /* Cyan - function names */
+  --comment: #6272a4;         /* Gray - comments */
+  --operator: #ff79c6;        /* Pink - operators */
+  --tag: #ff79c6;             /* Pink - HTML tags */
+  --attr: #8be9fd;            /* Cyan - attributes */
+}
+
+.inline-code {
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: #10a37f;
+  white-space: nowrap;
+}
+
 .message-time {
   display: block;
   font-size: 0.6rem;

@@ -1,19 +1,84 @@
-import React from 'react';
+import React, { useState } from 'react';
 import IntentIcon from './IntentIcon';
 
+function CodeBlock({ code }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code.trim());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="code-block-wrapper">
+      <button className="code-copy-btn" onClick={handleCopy} title={copied ? 'Copiado!' : 'Copiar código'}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          {copied ? (
+            <>
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </>
+          ) : (
+            <>
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            </>
+          )}
+        </svg>
+        {copied ? '✓' : 'Copiar'}
+      </button>
+      <pre className="code-block">
+        <code className="code-content">{code.trim()}</code>
+      </pre>
+    </div>
+  );
+}
+
 function parseRichText(text) {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  // Handle code blocks (```code```) and inline code (`code`)
+  const blockCodeRegex = /```([\s\S]*?)```/g;
+  const inlineCodeRegex = /`([^`]+)`/g;
+  
+  // Split by code blocks first
+  const blockParts = text.split(blockCodeRegex).map((part, idx) => {
+    if (idx % 2 === 1) {
+      // This is a code block
+      return { type: 'code-block', content: part };
+    }
+    // Process inline code and markdown formatting in non-code-block text
+    return { type: 'text', content: part };
+  });
 
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index}>{part.slice(2, -2)}</strong>;
+  return blockParts.map((block, blockIdx) => {
+    if (block.type === 'code-block') {
+      return <CodeBlock key={blockIdx} code={block.content} />;
     }
 
-    if (part.startsWith('*') && part.endsWith('*')) {
-      return <em key={index}>{part.slice(1, -1)}</em>;
-    }
+    // For text blocks, process inline code and other formatting
+    const inlineParts = block.content.split(inlineCodeRegex).map((part, inlineIdx) => {
+      if (inlineIdx % 2 === 1) {
+        // This is inline code
+        return (
+          <code key={`inline-${inlineIdx}`} className="inline-code">
+            {part}
+          </code>
+        );
+      }
 
-    return <React.Fragment key={index}>{part}</React.Fragment>;
+      // Process bold and italic
+      const boldItalicParts = part.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+      return boldItalicParts.map((bprt, bIdx) => {
+        if (bprt.startsWith('**') && bprt.endsWith('**')) {
+          return <strong key={`bold-${bIdx}`}>{bprt.slice(2, -2)}</strong>;
+        }
+        if (bprt.startsWith('*') && bprt.endsWith('*')) {
+          return <em key={`italic-${bIdx}`}>{bprt.slice(1, -1)}</em>;
+        }
+        return <React.Fragment key={`text-${bIdx}`}>{bprt}</React.Fragment>;
+      });
+    });
+
+    return <React.Fragment key={`text-block-${blockIdx}`}>{inlineParts}</React.Fragment>;
   });
 }
 const ACTION_CONFIG = {
