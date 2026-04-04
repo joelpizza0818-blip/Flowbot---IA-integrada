@@ -1310,6 +1310,8 @@ body {
 
   .message-bubble {
     max-width: 88%;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .chat-header {
@@ -1416,6 +1418,8 @@ body {
   .message-bubble {
     max-width: 90%;
     padding: 11px 13px;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .bot-avatar {
@@ -1483,7 +1487,8 @@ body {
   }
 
   .message-bubble {
-    max-width: 92%;
+    max-width: 88%;
+    word-break: break-word;
   }
 
   .input-wrapper {
@@ -1497,6 +1502,18 @@ body {
   .code-copy-btn {
     padding: 5px 8px;
     font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 320px) {
+  .message-bubble {
+    max-width: 85%;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .input-wrapper {
+    max-width: calc(100% - 14px);
   }
 }
 
