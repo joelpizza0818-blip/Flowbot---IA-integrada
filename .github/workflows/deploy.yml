@@ -1,9 +1,10 @@
-name: Deploy Vite to GitHub Pages
+name: Deploy GitHub Pages
 
 on:
   push:
     branches:
       - main
+  pull_request:
 
 permissions:
   contents: read
@@ -11,11 +12,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  validate:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
@@ -26,16 +28,52 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build
         run: npm run build
         env:
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
           VITE_SYSTEM_PROMPT: ${{ secrets.VITE_SYSTEM_PROMPT }}
+          VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
+          VITE_BASE_PATH: /Flowbot---IA-integrada/
+
+      - name: Lint
+        run: npm run lint
+
+  build:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          VITE_SYSTEM_PROMPT: ${{ secrets.VITE_SYSTEM_PROMPT }}
+          VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
+          VITE_BASE_PATH: /Flowbot---IA-integrada/
+
+      - name: Lint
+        run: npm run lint
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
@@ -43,6 +81,7 @@ jobs:
           path: ./dist
 
   deploy:
+    if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
 
@@ -51,6 +90,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Deploy
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

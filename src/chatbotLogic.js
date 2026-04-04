@@ -1,26 +1,164 @@
 // chatbotLogic.js
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-
-const MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite-preview",
-  "gemini-2.0-flash",
+const AI_UNAVAILABLE_MESSAGE =
+  'El modelo de IA no esta disponible en este momento. Intenta de nuevo en unos minutos.';
+const PUBLIC_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const PROXY_BASE_URL = (import.meta.env.VITE_PROXY_URL || '').replace(/\/$/, '');
+const SYSTEM_PROMPT =
+  import.meta.env.VITE_SYSTEM_PROMPT ||
+  'Eres FLOWBOT, una IA de tareas basicas. Responde de forma breve, usando Markdown y negritas para enfatizar puntos clave.';
+const CLIENT_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-flash-latest',
 ];
 
-const SYSTEM_PROMPT = import.meta.env.VITE_SYSTEM_PROMPT|| `eres FLOWBOT una IA de tareas basicas responde de manera corta usando Markdown y negritas para enfatizar puntos clave, responde en broma si el usuario bromea y de forma grosera si el usuario es grosero`
+function getProxyEndpoint() {
+  return PROXY_BASE_URL ? `${PROXY_BASE_URL}/api/flowbot-proxy` : '/api/flowbot-proxy';
+}
+
+async function fetchJsonWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => ({}));
+    return { response, data };
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+function extractGeminiText(data) {
+  if (typeof data?.text === 'string' && data.text.trim()) {
+    return data.text.trim();
+  }
+
+  const parts = data?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return '';
+
+  return parts
+    .map((part) => (typeof part?.text === 'string' ? part.text : ''))
+    .join('')
+    .trim();
+}
+
+async function fetchGeminiViaProxy(userMessage) {
+  try {
+    const { response, data } = await fetchJsonWithTimeout(
+      getProxyEndpoint(),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userMessage }),
+      },
+      4500,
+    );
+
+    if (!response.ok) {
+      console.warn('[FlowBot AI] Proxy no disponible:', data?.error || response.statusText);
+      return null;
+    }
+
+    const text = extractGeminiText(data);
+    if (text) {
+      console.log(`[FlowBot AI] Respuesta servida por ${data?.model || 'proxy'}.`);
+      return text;
+    }
+  } catch (error) {
+    console.warn('[FlowBot AI] Proxy inaccesible:', error.message);
+  }
+
+  return null;
+}
+
+async function fetchGeminiDirect(userMessage) {
+  if (!PUBLIC_API_KEY) {
+    return null;
+  }
+
+  for (const model of CLIENT_MODELS) {
+    try {
+      const { response, data } = await fetchJsonWithTimeout(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${PUBLIC_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: SYSTEM_PROMPT }],
+            },
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: userMessage }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1024,
+            },
+          }),
+        },
+        12000,
+      );
+
+      if (!response.ok) {
+        console.warn(`[FlowBot AI] ${model} respondio con status ${response.status}.`);
+        continue;
+      }
+
+      const finishReason = data?.candidates?.[0]?.finishReason;
+      if (finishReason === 'SAFETY' || finishReason === 'RECITATION') {
+        return 'No puedo responder a esa consulta por politicas de seguridad.';
+      }
+
+      const text = extractGeminiText(data);
+      if (text) {
+        console.log(`[FlowBot AI] Respuesta directa por ${model}.`);
+        return text;
+      }
+    } catch (error) {
+      console.warn(`[FlowBot AI] Error directo con ${model}:`, error.message);
+    }
+  }
+
+  return null;
+}
 
 export async function fetchGeminiAI(userMessage) {
-  // 1. Intentar usar el Proxy del servidor si NO estamos en GitHub Pages
-  const isGitHubPages = window.location.hostname.includes('github.io');
+  const proxyText = await fetchGeminiViaProxy(userMessage);
+  if (proxyText) return proxyText;
+
+  const directText = await fetchGeminiDirect(userMessage);
+  if (directText) return directText;
+
+  return AI_UNAVAILABLE_MESSAGE;
+
+  /*
+
+
+
+  // Detectar si estamos en un hosting estático (GitHub Pages, Netlify, etc.)
+  const hostname = window.location.hostname;
+  const isStaticHosting = hostname.includes('github.io') || 
+                          hostname.includes('netlify.app') || 
+                          hostname.includes('vercel.app') ||
+                          hostname.includes('pages.dev');
   
-  if (!isGitHubPages) {
+  // En hosting estático NO hay proxy backend, ir directo a la API
+  if (!isStaticHosting) {
     try {
-      console.log(`[FlowBot AI] Intentando comunicación vía Proxy Seguro...`);
+      console.log(`[FlowBot AI] Modo Servidor — Intentando Proxy Seguro...`);
       const response = await fetch('/api/flowbot-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userMessage, systemPrompt: SYSTEM_PROMPT })
+        body: JSON.stringify({ userMessage, systemPrompt: import.meta.env.VITE_SYSTEM_PROMPT })
       });
 
       if (response.ok) {
@@ -28,21 +166,23 @@ export async function fetchGeminiAI(userMessage) {
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) return text.trim();
       }
-      console.warn("[FlowBot AI] Proxy falló o no disponible. Reintentando vía directa...");
+      console.warn("[FlowBot AI] Proxy no disponible. Cambiando a modo directo...");
     } catch (err) {
-      console.warn("[FlowBot AI] Error conectando con el Proxy:", err.message);
+      console.warn("[FlowBot AI] Proxy inaccesible:", err.message);
     }
+  } else {
+    console.log(`[FlowBot AI] Modo GitHub Pages — Conexión directa con Gemini API.`);
   }
 
-  // 2. Fallback: Comunicación Directa (Original)
-  if (!API_KEY) {
-    console.error("[FlowBot] VITE_GEMINI_API_KEY no esta definida para comunicación directa.");
-    return null;
+  // Verificar que la API Key esté disponible para llamadas directas
+  if (!import.meta.env.VITE_GEMINI_API_KEY) {
+    console.error("[FlowBot] API Key no configurada. Verifica VITE_GEMINI_API_KEY en los secrets del repositorio.");
+    return "⚠️ El modelo de IA no está disponible en este momento. Contacta al administrador.";
   }
 
   for (const model of MODELS) {
     try {
-      console.log(`[FlowBot AI] Intentando modelo vía directa: ${model}`);
+      console.log(`[FlowBot AI] Conectando con modelo: ${model}...`);
 
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`,
@@ -53,7 +193,7 @@ export async function fetchGeminiAI(userMessage) {
           },
           body: JSON.stringify({
             system_instruction: {
-              parts: [{ text: SYSTEM_PROMPT }],
+              parts: [{ text: import.meta.env.VITE_SYSTEM_PROMPT }],
             },
             contents: [
               {
@@ -71,9 +211,10 @@ export async function fetchGeminiAI(userMessage) {
 
       const data = await res.json();
       if (!res.ok) {
+        console.warn(`[FlowBot AI] ${model} respondió con status ${res.status}: ${data?.error?.message || 'Error desconocido'}`);
         if (res.status === 429) { continue; }
         if (res.status === 400) { continue; }
-        if (res.status === 403 || res.status === 401) { return null; }
+        if (res.status === 403 || res.status === 401) { return "⚠️ La clave de API no es válida o ha expirado."; }
         continue;
       }
 
@@ -82,19 +223,23 @@ export async function fetchGeminiAI(userMessage) {
 
       const finishReason = candidate?.finishReason;
       if (finishReason === "SAFETY" || finishReason === "RECITATION") {
-        return "No puedo responder a esa consulta por politicas de seguridad.";
+        return "No puedo responder a esa consulta por políticas de seguridad.";
       }
 
       const text = candidate?.content?.parts?.[0]?.text;
-      if (text && text.trim().length > 0) return text.trim();
+      if (text && text.trim().length > 0) {
+        console.log(`[FlowBot AI] ✅ Respuesta exitosa vía ${model}`);
+        return text.trim();
+      }
 
     } catch (err) {
-      console.warn(`[${model}] Error de red directa: ${err.message}`);
+      console.warn(`[FlowBot AI] ${model} — Error de red: ${err.message}`);
     }
   }
 
-  console.error("[FlowBot AI] Todos los métodos de comunicación fallaron.");
+  console.error("[FlowBot AI] Todos los modelos fallaron.");
   return null;
+  */
 }
 
 export async function getBotResponse(prompt) {
@@ -1235,4 +1380,3 @@ export {
   fallbackActionHints,
   intentGroups,
 };
-

@@ -1,91 +1,85 @@
-# FlowBot: Motor Híbrido de Intenciones y Gemini 2.x
+# FlowBot
 
-FlowBot es un asistente conversacional inteligente desarrollado con **React 19** y **Vite**. Combina una robusta detección de intenciones local con la potencia de la familia de modelos **Gemini 2.x** de Google para proporcionar respuestas precisas y dinámicas.
+FlowBot es un chatbot hecho con React, Vite y Express. Ahora soporta un despliegue hibrido:
 
-## Arquitectura del Sistema
+- En GitHub Pages funciona como sitio estatico publico.
+- Si existe un proxy backend, el frontend lo usa primero.
+- Si no existe proxy, cae a Gemini directo desde el navegador usando una `VITE_GEMINI_API_KEY` publica y restringida por dominio.
 
-El bot opera bajo una estructura de cuatro capas de procesamiento:
+## Como funciona el modo hibrido
 
-1.  **Detección de Intenciones (Local):** Clasifica los mensajes del usuario en 10 grupos semánticos (Visualizar, Crear, Eliminar, Buscar, Modificar, Enviar, Seguridad, Ayuda, Informar, Automatizar).
-2.  **Capa Conversacional:** Maneja saludos, cortesía y preguntas sobre la identidad del bot de forma estática para minimizar la latencia.
-3.  **Capa de Decisiones:** Ejecuta acciones específicas según la intención detectada, como preparar búsquedas en Google o YouTube, o solicitar confirmaciones de seguridad.
-4.  **Motor de IA (Gemini 2.x):** Actúa como fallback inteligente cuando las capas locales no encuentran una coincidencia de alta confianza. Implementa un sistema de reintentos entre modelos (`gemini-2.5-flash`, `gemini-2.0-flash`) para garantizar disponibilidad.
+1. El frontend intenta `VITE_PROXY_URL/api/flowbot-proxy` o `/api/flowbot-proxy`.
+2. Si el proxy responde, la key privada vive solo en el servidor.
+3. Si el proxy no existe, usa Gemini directo desde el cliente.
 
-## Guía de Intenciones y Palabras Clave
+Esto permite:
 
-El sistema está entrenado para reconocer y actuar sobre los siguientes grupos de intención:
+- GitHub Pages hoy.
+- Proxy externo despues, sin rehacer el frontend.
 
-| Intención | Descripción | Ejemplos de Palabras Clave (Selección) |
-| :--- | :--- | :--- |
-| **Visualizar** | Consultar datos, reportes o contenido multimedia. | *Pantalla, reporte, KPIs, dashboard, stream, en vivo, monitor, panel, vista.* |
-| **Crear** | Generar nuevos elementos, proyectos o contenidos. | *Hazme, crear, arma, genérame, código, implementar, template, build, maquetar.* |
-| **Eliminar** | Acciones destructivas o limpieza de datos. | *Borrar, quitar, remover, purgar, vaciar, reset, destructivo, wipe, aniquilar.* |
-| **Modificar** | Edición, actualización o refinamiento. | *Editar, cambiar, optimizar, fixear, refactorizar, modernizar, tune-up, service.* |
-| **Buscar** | Localización de información o recursos externos. | *Búscame, googlea, investiga, filtrar, localizar, hallar, crawler, mining, query.* |
-| **Enviar** | Distribución de información o archivos. | *Mándame, comparte, exporta, telegram, whatsapp, email, push, deploy, sync.* |
-| **Seguridad** | Protocolos de protección y autenticación. | *Proteger, cifrar, login, senha, firewall, 2fa, exploit, malware, blindar.* |
-| **Ayuda** | Soporte técnico e instrucciones de uso. | *Soporte, guía, FAQ, manual, asistencia, troubleshooting, no entiendo, auxilio.* |
-| **Informar** | Notificaciones y documentación técnica. | *Avisar, documentar, registrar, bitácora, reporte, info, da la lu, resumen, log.* |
-| **Automatizar** | Flujos de trabajo y tareas programadas. | *Script, pipeline, workflow, bot, cron, loop, orquestación, trigger, auto.* |
-| **Control Sistema** | Control directo de funciones del navegador. | *F11, pantalla completa, recargar, F5, imprimir, subir, bajar, ir arriba.* |
+## Variables de entorno
 
-> [!TIP]
-> **Potencia de Detección:** El motor local ha sido expandido con más de **500 variantes lingüísticas**, incluyendo tecnicismos, coloquialismos y términos en inglés, garantizando una respuesta inmediata para casi cualquier forma de solicitar una tarea.
+Usa `.env.example` como referencia.
 
-## Estructura del Proyecto
-
-```text
-Flowbot/
-|── dist/                   # Archivos de producción
-├── public/                 # Archivos estáticos
-│   ├── favicon.svg         # Icono interactivo
-│   └── icons.svg           # Sprites SVG
-├── src/                    # Código fuente principal
-│   ├── assets/             # Imágenes y SVGs de la interfaz
-│   ├── components/         # Componentes React (FlowLogo, ChatMessage, etc.)
-│   ├── App.jsx             # Vista principal y gestión de estado
-│   ├── App.css             # Estilos de la aplicación y animaciones cyber
-│   ├── chatbotLogic.js     # Lógica central, intenciones y conexión Gemini
-│   ├── index.css           # Estilos base
-│   └── main.jsx            # Punto de entrada de React
-├── .env                    # Variables de entorno (VITE_GEMINI_API_KEY)
-├── eslint.config.js        # Reglas de linting
-├── index.html              # Plantilla raíz
-├── package.json            # Configuración de Node.js
-└── vite.config.js          # Configuración del servidor/bundler
-```
-
-## Tecnologías Utilizadas
-
--   **Frontend:** React 19, Vite 8, Modern CSS (Variables y Animaciones).
--   **IA:** Google Generative AI (Gemini 2.5/2.0 API).
--   **Lógica:** Motor de regex y normalización de texto personalizado.
-
-## Instalación y Ejecución
+### Frontend para GitHub Pages
 
 ```bash
-# Instalar dependencias
-npm install
-dentro de la carpeta Flowbot
-
-# Iniciar servidor de desarrollo
-npm run dev
-
-# Construir para producción
-npm run build
-
-genera la una API KEY con https://aistudio.google.com/app/api-keys y coloca la en el archivo .env desde la raiz del proyecto bajo el nombre de VITE_GEMINI_API_KEY
+VITE_GEMINI_API_KEY=replace-with-restricted-public-key
+VITE_SYSTEM_PROMPT=Eres FLOWBOT, una IA de tareas basicas. Responde de forma breve, usando Markdown y negritas para enfatizar puntos clave.
+VITE_PROXY_URL=
+VITE_BASE_PATH=/Flowbot---IA-integrada/
 ```
 
-> [!IMPORTANT]
-> Es necesario configurar la variable `VITE_GEMINI_API_KEY` en un archivo `.env` en la raíz del proyecto para habilitar las capacidades de IA.
+### Backend opcional
 
-## Características de la Interfaz (UI/UX)
+```bash
+GEMINI_API_KEY=replace-with-server-key
+GEMINI_MODELS=gemini-2.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-flash-latest
+FLOWBOT_SYSTEM_PROMPT=Eres FLOWBOT, una IA de tareas basicas. Responde de forma breve, usando Markdown y negritas para enfatizar puntos clave.
+CORS_ORIGINS=https://joelpizza0818-blip.github.io
+```
 
--   **Sidebar Dinámico:** Panel colapsable funcional tanto en escritorio como en móvil.
--   **Acciones Rápidas:** Botones de acceso directo para disparar flujos comunes de prueba.
--   **Indicador de Escritura:** Sincronizado dinámicamente con la latencia de las APIs externas.
--   **Diseño Neon/Dark:** Interfaz premium con efectos de cristal y gradientes fluidos.
+## Desarrollo local
 
----
-*Desarrollado como un prototipo modular para sistemas de asistencia inteligente.*
+```bash
+npm install
+npm run dev:server
+npm run dev
+```
+
+- `npm run dev:server` levanta Express en `http://localhost:3000`
+- `npm run dev` levanta Vite en `http://localhost:5173`
+- Vite reenvia `/api` al backend local
+
+## GitHub Pages
+
+El workflow de [deploy.yml](./.github/workflows/deploy.yml) publica automaticamente en Pages al hacer push a `main`.
+
+Configura estos secretos del repositorio:
+
+- `VITE_GEMINI_API_KEY`
+- `VITE_SYSTEM_PROMPT`
+- `VITE_PROXY_URL` opcional
+
+### Recomendacion de seguridad para la key publica
+
+La `VITE_GEMINI_API_KEY` debe estar restringida en Google:
+
+- Restriccion por HTTP referrer al dominio `https://joelpizza0818-blip.github.io/*`
+- Restriccion por API solo a Gemini Developer API si tu panel lo permite
+
+## Backend opcional
+
+Si luego despliegas el proxy en otro host:
+
+```bash
+VITE_BASE_PATH=/ npm run build
+npm start
+```
+
+Configura `VITE_PROXY_URL` en Pages apuntando a ese backend y `CORS_ORIGINS` con el dominio de GitHub Pages.
+
+## Verificacion rapida
+
+- `GET /api/health` confirma si el backend esta arriba y si la IA esta configurada.
+- `POST /api/flowbot-proxy` recibe `{ "userMessage": "hola" }`.
