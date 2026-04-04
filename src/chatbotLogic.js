@@ -350,7 +350,7 @@ const decisionRules = [
   },
   {
     intentId: 'eliminar',
-    triggerKeywords: ['limpiar chat', 'borrar todo', 'vaciar chat', 'borrar historial', 'vuela el chat', 'reset chat', 'comenzar de cero', 'limpia todo el chat', 'borrar la conversación', 'reiniciar chat', 'vuela el historial', 'limpieza total'],
+    triggerKeywords: ['limpiar chat', 'borrar todo', 'vaciar chat', 'borrar historial', 'vuela el chat', 'reset chat', 'comenzar de cero', 'limpia todo el chat', 'borrar la conversación', 'reiniciar chat', 'vuela el historial', 'limpieza total','clean chat', 'clear chart', 'reset chat', 'clear'],
     action: 'clear_chat',
     priority: 100,
   },
@@ -517,14 +517,6 @@ const decisionRules = [
 ];
 
 decisionRules.sort((a, b) => b.priority - a.priority);
-
-
-
-
-
-
-
-
 
 const searchIntroFillers = new Set(
   [
@@ -750,7 +742,89 @@ export async function generateBotResponse(userMessage) {
   };
 }
 
+const availableActions = [
+  {
+    id: 'toggle_fullscreen',
+    label: 'Pantalla Completa',
+    keywords: ['fullscreen', 'pantalla completa', 'modo cine'],
+    icon: '🖥️',
+  },
+  {
+    id: 'toggle_sidebar',
+    label: 'Minimizar',
+    keywords: ['minimizar', 'cerrar menú', 'sidebar'],
+    icon: '≡',
+  },
+  {
+    id: 'open_console',
+    label: '<console>',
+    keywords: ['console', '<console>'],
+    icon: '💻',
+  },
+  {
+    id: 'reload_page',
+    label: 'Recargar',
+    keywords: ['recargar', 'refresh', 'actualizar'],
+    icon: '🔄',
+  },
+  {
+    id: 'print_page',
+    label: 'Imprimir',
+    keywords: ['imprimir', 'print', 'pdf'],
+    icon: '🖨️',
+  },
+  {
+    id: 'scroll_top',
+    label: 'Ir Arriba',
+    keywords: ['subir', 'ir arriba', 'inicio'],
+    icon: '⬆️',
+  },
+  {
+    id: 'scroll_bottom',
+    label: 'Ir Abajo',
+    keywords: ['bajar', 'ir al final'],
+    icon: '⬇️',
+  },
+  {
+    id: 'clear_chat',
+    label: 'Limpiar Chat',
+    keywords: ['limpiar', 'borrar todo', 'reset chat'],
+    icon: '🗑️',
+  },
+  {
+    id: 'open_search',
+    label: 'Buscar',
+    keywords: ['ver', 'buscar', 'google'],
+    icon: '🔍',
+  },
+  {
+    id: 'open_youtube',
+    label: 'Ver Video',
+    keywords: ['ver video', 'youtube', 'video'],
+    icon: '📺',
+  },
+  {
+    id: 'system_scan',
+    label: 'Escanear',
+    keywords: ['scan', 'escanear'],
+    icon: '🔎',
+  },
+  {
+    id: 'data_encryption',
+    label: 'Encriptar',
+    keywords: ['encriptar', 'cifrar'],
+    icon: '🔐',
+  },
+  {
+    id: 'set_timer',
+    label: 'Timer',
+    keywords: ['timer', 'temporizador'],
+    icon: '⏱️',
+  },
+];
+
 export {
+  availableActions,
   decisionRules,
   intentGroups,
 };

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import FlowLogo from './components/FlowLogo';
 import ChatMessage from './components/ChatMessage';
 import IntentIcon from './components/IntentIcon';
-import { generateBotResponse, intentGroups } from './chatbotLogic';
+import { generateBotResponse, intentGroups, availableActions } from './chatbotLogic';
 import './App.css';
 
 const MOBILE_BREAKPOINT = 768;
@@ -253,6 +253,168 @@ function App() {
     nextId.current = 1;
   }
 
+  function handleActionClick(actionId) {
+    if (actionId === 'toggle_fullscreen') {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.error(`Error al activar pantalla completa: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    } else if (actionId === 'toggle_sidebar') {
+      setSidebarOpen((prev) => !prev);
+    } else if (actionId === 'open_console') {
+      console.log('%cConsola abierta desde FlowBot', 'color: #00ff00; font-size: 16px; font-weight: bold;');
+    } else if (actionId === 'reload_page') {
+      setTimeout(() => window.location.reload(), 1500);
+    } else if (actionId === 'print_page') {
+      setTimeout(() => window.print(), 1000);
+    } else if (actionId === 'scroll_top') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (actionId === 'scroll_bottom') {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    } else if (actionId === 'clear_chat') {
+      setTimeout(() => handleClearChat(), 500);
+    } else if (actionId === 'system_scan') {
+      setIsScanning(true);
+      setTimeout(() => setIsScanning(false), 5000);
+    } else if (actionId === 'data_encryption') {
+      setIsEncrypting(true);
+      setTimeout(() => setIsEncrypting(false), 5000);
+    } else if (actionId === 'set_timer') {
+      setTimerAlert({ label: 'Tarea rápida', remaining: 10, total: 10, finished: false });
+      const timerId = setInterval(() => {
+        setTimerAlert((prev) => {
+          if (!prev || prev.remaining <= 1) {
+            clearInterval(timerId);
+            return prev ? { ...prev, remaining: 0, finished: true } : null;
+          }
+          return { ...prev, remaining: prev.remaining - 1 };
+        });
+      }, 1000);
+    } else if (actionId === 'open_search') {
+      const searchTerm = prompt('¿Qué deseas buscar?');
+      if (searchTerm) {
+        window.location.href = `https://www.google.com/search?q=${encodeURIComponent(searchTerm)}`;
+      }
+    } else if (actionId === 'open_youtube') {
+      const searchTerm = prompt('¿Qué deseas buscar en video?');
+      if (searchTerm) {
+        window.location.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchTerm)}`;
+      }
+    }
+    
+    if (viewportMetrics.isCompact) {
+      setSidebarOpen(false);
+    }
+  }
+
+  function getActionSvg(actionId) {
+    const svgProps = { width: '24', height: '24', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' };
+    
+    switch (actionId) {
+      case 'toggle_fullscreen':
+        return (
+          <svg {...svgProps}>
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+        );
+      case 'toggle_sidebar':
+        return (
+          <svg {...svgProps}>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        );
+      case 'open_console':
+        return (
+          <svg {...svgProps}>
+            <polyline points="4 17 10 11 4 5"/>
+            <line x1="12" y1="19" x2="20" y2="19"/>
+          </svg>
+        );
+      case 'reload_page':
+        return (
+          <svg {...svgProps}>
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2-8.83"/>
+          </svg>
+        );
+      case 'print_page':
+        return (
+          <svg {...svgProps}>
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+          </svg>
+        );
+      case 'scroll_top':
+        return (
+          <svg {...svgProps}>
+            <polyline points="18 15 12 9 6 15"/>
+            <line x1="12" y1="21" x2="12" y2="9"/>
+          </svg>
+        );
+      case 'scroll_bottom':
+        return (
+          <svg {...svgProps}>
+            <polyline points="6 9 12 15 18 9"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        );
+      case 'clear_chat':
+        return (
+          <svg {...svgProps}>
+            <polyline points="3 6 5 4 21 4"/>
+            <path d="M19 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4m3 0V2h8v2M10 9v6m4-6v6"/>
+          </svg>
+        );
+      case 'open_search':
+        return (
+          <svg {...svgProps}>
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+        );
+      case 'open_youtube':
+        return (
+          <svg {...svgProps}>
+            <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/>
+            <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
+          </svg>
+        );
+      case 'system_scan':
+        return (
+          <svg {...svgProps}>
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            <circle cx="9" cy="10" r="0"/>
+            <circle cx="12" cy="10" r="0"/>
+            <circle cx="15" cy="10" r="0"/>
+          </svg>
+        );
+      case 'data_encryption':
+        return (
+          <svg {...svgProps}>
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            <circle cx="12" cy="16" r="1"/>
+          </svg>
+        );
+      case 'set_timer':
+        return (
+          <svg {...svgProps}>
+            <circle cx="12" cy="13" r="8"/>
+            <path d="M12 9v4l3 2"/>
+            <path d="M9 2h6"/>
+          </svg>
+        );
+      default:
+        return null;
+    }
+  }
+
   const quickActions = [
     { label: 'Ver datos', prompt: 'Quiero ver mis datos y analizar el reporte' },
     { label: 'Crear algo', prompt: 'Necesito crear un nuevo proyecto' },
@@ -337,6 +499,25 @@ function App() {
                   )}
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="sidebar-section">
+          <h3 className="section-title">Acciones Disponibles</h3>
+          <div className="actions-grid">
+            {availableActions.map((action) => (
+              <button
+                key={action.id}
+                className="action-btn"
+                onClick={() => handleActionClick(action.id)}
+                title={action.label}
+              >
+                <span className="action-icon">
+                  {getActionSvg(action.id)}
+                </span>
+                <span className="action-label">{action.label}</span>
+              </button>
             ))}
           </div>
         </div>
