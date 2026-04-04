@@ -5,8 +5,26 @@ import IntentIcon from './components/IntentIcon';
 import { generateBotResponse, intentGroups } from './chatbotLogic';
 import './App.css';
 
+const MOBILE_BREAKPOINT = 768;
+const KEYBOARD_THRESHOLD = 120;
+
 function getTimeString() {
   return new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
+function getViewportMetrics() {
+  const visualViewport = window.visualViewport;
+  const viewportHeight = Math.round(visualViewport?.height ?? window.innerHeight);
+  const viewportWidth = Math.round(visualViewport?.width ?? window.innerWidth);
+  const offsetTop = Math.round(visualViewport?.offsetTop ?? 0);
+  const keyboardOffset = Math.max(0, window.innerHeight - viewportHeight - offsetTop);
+  const isCompact = viewportWidth <= MOBILE_BREAKPOINT;
+
+  return {
+    viewportHeight,
+    isCompact,
+    keyboardOffset: isCompact && keyboardOffset > KEYBOARD_THRESHOLD ? keyboardOffset : 0,
+  };
 }
 
 
@@ -29,15 +47,80 @@ function App() {
   const [isTyping, setIsTyping] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isEncrypting, setIsEncrypting] = useState(false);
+  const [isComposerFocused, setIsComposerFocused] = useState(false);
   const [timerAlert, setTimerAlert] = useState(null); // { label, total, remaining }
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 768);
+  const [viewportMetrics, setViewportMetrics] = useState(() => getViewportMetrics());
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
   const nextId = useRef(1);
+  const isKeyboardVisible = viewportMetrics.isCompact && viewportMetrics.keyboardOffset > 0;
+  const appContainerClassName = [
+    'app-container',
+    viewportMetrics.isCompact ? 'is-mobile' : '',
+    isKeyboardVisible ? 'keyboard-visible' : '',
+    isComposerFocused ? 'composer-focused' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const appContainerStyle = {
+    '--app-height': `${viewportMetrics.viewportHeight}px`,
+    '--keyboard-offset': `${viewportMetrics.keyboardOffset}px`,
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    const inputElement = inputRef.current;
+    if (!inputElement) return;
+
+    inputElement.style.height = '0px';
+    inputElement.style.height = `${Math.min(inputElement.scrollHeight, 160)}px`;
+  }, [input]);
+
+  useEffect(() => {
+    const updateViewport = () => {
+      setViewportMetrics(getViewportMetrics());
+    };
+
+    updateViewport();
+
+    const visualViewport = window.visualViewport;
+    visualViewport?.addEventListener('resize', updateViewport);
+    visualViewport?.addEventListener('scroll', updateViewport);
+    window.addEventListener('resize', updateViewport);
+    window.addEventListener('orientationchange', updateViewport);
+
+    return () => {
+      visualViewport?.removeEventListener('resize', updateViewport);
+      visualViewport?.removeEventListener('scroll', updateViewport);
+      window.removeEventListener('resize', updateViewport);
+      window.removeEventListener('orientationchange', updateViewport);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isComposerFocused || !viewportMetrics.isCompact) return;
+
+    const scrollToLatest = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      messagesContainerRef.current?.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    };
+
+    const frameId = window.requestAnimationFrame(scrollToLatest);
+    const timeoutId = window.setTimeout(scrollToLatest, 220);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [isComposerFocused, viewportMetrics, messages.length]);
 
   useEffect(() => {
     if (timerAlert) {
@@ -148,6 +231,25 @@ function App() {
     }
   }
 
+  function handleComposerFocus() {
+    setIsComposerFocused(true);
+
+    if (viewportMetrics.isCompact) {
+      setSidebarOpen(false);
+      window.setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 180);
+    }
+  }
+
+  function handleComposerBlur() {
+    window.setTimeout(() => {
+      if (document.activeElement !== inputRef.current) {
+        setIsComposerFocused(false);
+      }
+    }, 120);
+  }
+
   function handleClearChat() {
     setMessages([createWelcomeMessage()]);
     nextId.current = 1;
@@ -161,7 +263,7 @@ function App() {
   ];
 
   return (
-    <div className="app-container">
+    <div className={appContainerClassName} style={appContainerStyle}>
       {isScanning && (
         <div className="scanning-overlay">
           <div className="scanning-grid"></div>
@@ -279,7 +381,7 @@ function App() {
           </div>
         </header>
 
-        <div className="messages-container" id="messages-container">
+        <div className="messages-container" id="messages-container" ref={messagesContainerRef}>
           <div className="messages-inner">
             {messages.map((message, index) => (
               <ChatMessage key={message.id} message={message} isLatest={index === messages.length - 1} />
@@ -310,7 +412,8 @@ function App() {
           </div>
         </div>
 
-        <div className="quick-actions">
+        <div className={`composer-dock ${isKeyboardVisible ? 'composer-dock-keyboard' : ''}`}>
+          <div className={`quick-actions ${isComposerFocused && viewportMetrics.isCompact ? 'quick-actions-hidden' : ''}`}>
           {quickActions.map((action) => (
             <button
               key={action.label}
@@ -325,20 +428,24 @@ function App() {
           ))}
         </div>
 
-        <div className="input-area">
-          <div className="input-wrapper">
-            <textarea
+          <div className="input-area">
+            <div className="input-wrapper">
+              <textarea
               ref={inputRef}
               className="chat-input"
               placeholder="Escribe tu mensaje aquí..."
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={handleKeyDown}
+              onFocus={handleComposerFocus}
+              onBlur={handleComposerBlur}
               rows={1}
               id="chat-input"
+              enterKeyHint="send"
+              autoComplete="off"
               aria-label="Escribe tu mensaje"
             />
-            <button
+              <button
               className={`send-btn ${input.trim() ? 'send-btn-active' : ''}`}
               onClick={handleSend}
               disabled={!input.trim()}
@@ -354,6 +461,7 @@ function App() {
           <p className="input-hint">
             FlowBot detecta intenciones como: <em>visualizar, crear, eliminar, buscar, modificar, enviar, seguridad, ayuda, informar, automatizar</em>
           </p>
+          </div>
         </div>
       </main>
 
