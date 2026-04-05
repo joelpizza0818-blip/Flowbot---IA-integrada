@@ -65,7 +65,9 @@ function App() {
   const inputRef = useRef(null);
   const nextId = useRef(1);
   const isKeyboardVisible = viewportMetrics.isCompact && viewportMetrics.keyboardOffset > 0;
-  const { usedSlots: usedContextSlots } = getContextUsage(messages);
+  const visibleMessages = messages.filter((message) => message.id !== 0);
+  const isEmptyState = visibleMessages.length === 0;
+  const { usedSlots: usedContextSlots } = getContextUsage(visibleMessages);
   const contextProgress = (usedContextSlots / CONTEXT_WINDOW_SIZE) * 100;
   const appContainerClassName = [
     'app-container',
@@ -159,7 +161,7 @@ function App() {
       time: getTimeString(),
     };
 
-    const recentConversation = [...messages, userMsg];
+    const recentConversation = [...visibleMessages, userMsg];
 
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
@@ -420,10 +422,10 @@ function App() {
   }
 
   const quickActions = [
-    { label: 'Navegar web', prompt: 'navegar noticias de tecnologia de hoy' },
-    { label: 'Video tutorial', prompt: 'reproducir video react hooks en espanol' },
-    { label: 'Temporizador', prompt: 'timer 10 minutos' },
-    { label: 'Ayuda IA', prompt: 'explicame de forma simple como mejorar mi prompt' },
+    { label: 'Codigo', prompt: 'crea un componente login en react' },
+    { label: 'Aprender', prompt: 'explicame de forma simple como mejorar mi prompt' },
+    { label: 'Navegar', prompt: 'navegar noticias de tecnologia de hoy' },
+    { label: 'Timer', prompt: 'timer 10 minutos' },
   ];
 
   return (
@@ -634,7 +636,7 @@ function App() {
 
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
-      <main className="chat-main">
+      <main className={`chat-main ${isEmptyState ? 'chat-main-empty' : ''}`}>
         <header className="chat-header">
           <button className="menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Alternar menú">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -662,18 +664,61 @@ function App() {
               </div>
             </div>
           </div>
-          <div className="header-actions">
-            <button className="icon-btn" onClick={handleClearChat} title="Limpiar chat" aria-label="Limpiar chat">
-              <IntentIcon name="clear" size={18} />
-            </button>
-          </div>
+          {!isEmptyState && (
+            <div className="header-actions">
+              <button className="icon-btn" onClick={handleClearChat} title="Limpiar chat" aria-label="Limpiar chat">
+                <IntentIcon name="clear" size={18} />
+              </button>
+            </div>
+          )}
         </header>
 
-        <div className="messages-container" id="messages-container" ref={messagesContainerRef}>
-          <div className="messages-inner">
-            {messages.length === 1 && <BackgroundLogo />}
-            {messages.map((message, index) => (
-              <ChatMessage key={message.id} message={message} isLatest={index === messages.length - 1} />
+        <div
+          className={`messages-container ${isEmptyState ? 'messages-container-empty' : ''}`}
+          id="messages-container"
+          ref={messagesContainerRef}
+        >
+          <div className={`messages-inner ${isEmptyState ? 'messages-inner-empty' : ''}`}>
+            {isEmptyState && <BackgroundLogo />}
+            {isEmptyState && (
+              <section className="empty-state-hero" aria-label="Portada de FlowBot">
+                <div className="empty-state-kicker">
+                  <span className="empty-state-kicker-dot"></span>
+                  IA conversacional con acciones reales
+                </div>
+
+                <div className="empty-state-head">
+                  <div className="empty-state-logo-shell">
+                    <FlowLogo size={58} />
+                  </div>
+
+                  <div className="empty-state-copy">
+                    <p className="empty-state-eyebrow">FlowBot</p>
+                    <h2 className="empty-state-title">Todo tu flujo en una sola conversacion.</h2>
+                    <p className="empty-state-description">
+                      Pregunta, busca, automatiza y controla la interfaz sin perder el contexto ni el ritmo.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="hero-context-band">
+                  <div className="hero-context-stat">
+                    <span className="hero-context-value">{usedContextSlots}/{CONTEXT_WINDOW_SIZE}</span>
+                    <span className="hero-context-label">contexto activo</span>
+                  </div>
+                  <div className="hero-context-progress" aria-hidden="true">
+                    <div className="hero-context-progress-fill" style={{ width: `${contextProgress}%` }} />
+                  </div>
+                  <div className="hero-context-copy">
+                    <strong>El mensaje actual siempre manda.</strong>
+                    <span>El historial reciente solo entra cuando ayuda a continuar, resumir o ajustar.</span>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {visibleMessages.map((message, index) => (
+              <ChatMessage key={message.id} message={message} isLatest={index === visibleMessages.length - 1} />
             ))}
 
             {isTyping && (
@@ -701,8 +746,8 @@ function App() {
           </div>
         </div>
 
-        <div className={`composer-dock ${isKeyboardVisible ? 'composer-dock-keyboard' : ''}`}>
-          <div className={`quick-actions ${isComposerFocused && viewportMetrics.isCompact ? 'quick-actions-hidden' : ''}`}>
+        <div className={`composer-dock ${isKeyboardVisible ? 'composer-dock-keyboard' : ''} ${isEmptyState ? 'composer-dock-empty' : ''}`}>
+          <div className={`quick-actions ${isComposerFocused && viewportMetrics.isCompact ? 'quick-actions-hidden' : ''} ${isEmptyState ? 'quick-actions-empty' : ''}`}>
           {quickActions.map((action) => (
             <button
               key={action.label}
@@ -717,8 +762,8 @@ function App() {
           ))}
         </div>
 
-          <div className="input-area">
-            <div className="input-wrapper">
+          <div className={`input-area ${isEmptyState ? 'input-area-empty' : ''}`}>
+            <div className={`input-wrapper ${isEmptyState ? 'input-wrapper-empty' : ''}`}>
               <textarea
               ref={inputRef}
               className="chat-input"
