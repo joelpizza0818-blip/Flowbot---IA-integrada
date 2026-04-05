@@ -8,6 +8,7 @@ import './App.css';
 
 const MOBILE_BREAKPOINT = 768;
 const KEYBOARD_THRESHOLD = 120;
+const CONTEXT_WINDOW_SIZE = 3;
 
 function getTimeString() {
   return new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
@@ -61,6 +62,10 @@ function App() {
   const inputRef = useRef(null);
   const nextId = useRef(1);
   const isKeyboardVisible = viewportMetrics.isCompact && viewportMetrics.keyboardOffset > 0;
+  const contextMessages = messages.slice(-CONTEXT_WINDOW_SIZE);
+  const usedContextSlots = Math.min(contextMessages.length, CONTEXT_WINDOW_SIZE);
+  const remainingContextSlots = Math.max(CONTEXT_WINDOW_SIZE - usedContextSlots, 0);
+  const contextProgress = (remainingContextSlots / CONTEXT_WINDOW_SIZE) * 100;
   const appContainerClassName = [
     'app-container',
     viewportMetrics.isCompact ? 'is-mobile' : '',
@@ -153,7 +158,7 @@ function App() {
       time: getTimeString(),
     };
 
-    const recentConversation = [...messages, userMsg].slice(-3);
+    const recentConversation = [...messages, userMsg].slice(-CONTEXT_WINDOW_SIZE);
 
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
@@ -645,6 +650,15 @@ function App() {
                 <span className="status-dot"></span>
                 {isAIOnline ? 'En línea' : 'Offline'}
               </span>
+              <div className="context-meter" aria-label={`Contexto disponible: ${remainingContextSlots} de ${CONTEXT_WINDOW_SIZE} espacios libres`}>
+                <div className="context-meter-copy">
+                  <span className="context-meter-label">Contexto</span>
+                  <span className="context-meter-value">Queda {remainingContextSlots}/{CONTEXT_WINDOW_SIZE}</span>
+                </div>
+                <div className="context-meter-track" aria-hidden="true">
+                  <div className="context-meter-fill" style={{ width: `${contextProgress}%` }} />
+                </div>
+              </div>
             </div>
           </div>
           <div className="header-actions">
