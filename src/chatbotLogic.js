@@ -16,9 +16,10 @@ const SYSTEM_PROMPT =
 
 const CLIENT_MODELS = [
   'gemini-2.5-flash',
-  'gemini-2.5-light',
+  'gemini-2.5-flash-lite',
   'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
+  'gemini-flash-lite-latest',
   'gemini-flash-latest',
 ];
 
@@ -90,8 +91,8 @@ async function fetchGeminiDirect(userMessage) {
     return null;
   }
 
-  for (const apiKey of API_KEYS) {
-    for (const model of CLIENT_MODELS) {
+  for (const model of CLIENT_MODELS) {
+    for (const apiKey of API_KEYS) {
       try {
         const { response, data } = await fetchJsonWithTimeout(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -119,7 +120,10 @@ async function fetchGeminiDirect(userMessage) {
 
         if (!response.ok) {
           const statusMsg = response.status === 429 ? '(CUOTA AGOTADA)' : `(status ${response.status})`;
-          console.warn(`[FlowBot AI] ${model} clave ${API_KEYS.indexOf(apiKey) + 1} ${statusMsg} → probando siguiente...`);
+          console.warn(`[FlowBot AI] ${model} clave ${API_KEYS.indexOf(apiKey) + 1} ${statusMsg} ? probando siguiente...`);
+          if (response.status === 429) {
+            await new Promise((r) => setTimeout(r, 1000));
+          }
           continue;
         }
 
@@ -130,11 +134,11 @@ async function fetchGeminiDirect(userMessage) {
 
         const text = extractGeminiText(data);
         if (text) {
-          console.log(`[FlowBot AI] ✓ Respuesta servida por ${model} (clave ${API_KEYS.indexOf(apiKey) + 1})`);
+          console.log(`[FlowBot AI] ? Respuesta servida por ${model} (clave ${API_KEYS.indexOf(apiKey) + 1})`);
           return text;
         }
       } catch (error) {
-        console.warn(`[FlowBot AI] ${model} clave ${API_KEYS.indexOf(apiKey) + 1} error: ${error.message} → probando siguiente...`);
+        console.warn(`[FlowBot AI] ${model} clave ${API_KEYS.indexOf(apiKey) + 1} error: ${error.message} ? probando siguiente...`);
       }
     }
   }
@@ -163,142 +167,15 @@ const intentGroups = [
     name: 'Visualizar',
     iconName: 'visualizar',
     color: '#00d4ff',
-    keywords: [
-        'ver eso','ver eso ahí','déjame ver','dejame ver','quiero ver',
-  'muéstrame','muestrame','enséñame eso','enseñame eso',
-  'quiero ver eso','quiero visualizar','quiero revisar',
-  'ver detalles','ver info','ver información',
-  'ver datos','ver resultados','ver reporte',
-  'abre eso','abre eso ahí','abre eso pa ver',
-  'pon eso','pon eso ahí','carga eso',
-  'muéstralo','muestralo','enséñalo','enseñalo',
-  'dame vista','vista previa','preview',
-  'ver pantalla','ver dashboard','ver resumen',
-  'quiero un overview','muéstrame el overview',
-  'quiero ver un grafico','ver gráfica','ver grafico',
-  'ver tabla','ver lista','ver mapa',
-  'ver eso en video','busca video de eso',
-  'quiero tutorial de eso','pon un tutorial',
-      'ver', 'visualizar', 'mostrar', 'analizar', 'inspeccionar', 'observar',
-      'revisar', 'explorar', 'examinar', 'consultar', 'mirar', 'chequear',
-      'comprobar', 'verificar', 'detectar', 'descubrir', 'identificar',
-      'reconocer', 'escanear', 'monitorear', 'rastrear', 'supervisar',
-      'ver', 'mostrar', 'visualizar', 'consultar', 'explorar', 'examinar',
-      'abrir', 'cargar', 'desplegar', 'presentar', 'exhibir', 'enseñar',
-      'previsualizar', 'renderizar', 'proyectar', 'monitorear', 'pantalla',
-      'reporte', 'informe', 'gráfico', 'grafico', 'tabla', 'mapa', 'dashboard',
-      'estadísticas', 'estadisticas', 'KPIs', 'vista', 'look', 'watch', 'view',
-      'show', 'read', 'scan', 'debug', 'monitor', 'panel', 'pizarra', 'grilla',
-      'listado', 'inventario', 'catálogo', 'catalogo', 'vitrina', 'muéstrame',
-      'muestrame', 'enséñame', 'enseñame', 'dame una vista', 'ponme el gráfico',
-      'abre el panel', 'chequea los datos', 'mira esto', 'ver video', 'tutorial',
-      'reproducir', 'video', 'youtube', 'ver tutorial', 'clip', 'filmación',
-      'stream', 'en vivo', 'reproductor', 'multimedia', 'play', 'pausa',
-      'adelanta', 'atrasa', 'volumen', 'pantalla completa',
-    ],
+    keywords: ['navegar en la web', 'reproducir video'],
     responses: [
-      '**Modo Visualización activado.** Estoy procesando tu solicitud para mostrar la información relevante.',
-      '**Entendido.** Preparando la vista de datos que necesitas.',
-      '**Visualización en proceso.** Analizando los datos para presentarlos de la forma más clara posible.',
+      '**Visualizacion activada.** Listo para navegar en la web o reproducir video.',
+      '**Entendido.** Preparando la accion visual solicitada.',
+      '**Modo visual activo.** Ejecutando tu comando.',
     ],
     details:
-      'Este grupo se activa cuando el usuario quiere **ver, analizar o consultar información**. Incluye acciones como monitorear dashboards, revisar reportes, explorar datos y generar vistas previas. Si detecto una consulta clara, también puedo abrir una búsqueda en el navegador.',
+      'Este grupo se activa unicamente para **navegar en la web** y **reproducir video**.',
   },
-  {
-    id: 'eliminar',
-    name: 'Eliminar',
-    iconName: 'eliminar',
-    color: '#ff4757',
-    keywords: [
-        'borra eso','borra eso ahí','elimínalo','elimínalo todo',
-  'quita eso','quita eso de ahí','saca eso',
-  'desaparece eso','hazlo desaparecer',
-  'no quiero eso','eso no va','eso fuera',
-  'bórralo completo','elimínalo completo',
-  'resetéalo','resetealo','reinicia eso',
-  'déjalo limpio','limpia eso',
-  'quita todo','vacía eso','vacía todo',
-  'quita esa vaina','borra eso ahora',
-      'eliminar', 'borrar', 'quitar', 'remover', 'suprimir', 'descartar',
-      'deshacer', 'anular', 'cancelar', 'destruir', 'purgar', 'limpiar',
-      'vaciar', 'depurar', 'erradicar', 'extirpar', 'extinguir',
-      'liquidar', 'demoler', 'desmantelar', 'desinstalar', 'desactivar',
-      'deshabilitar', 'revocar', 'invalidar', 'retirar', 'expulsar',
-      'truncar', 'podar', 'recortar', 'drop', 'delete', 'remove',
-      'clear', 'reset', 'wipe', 'flush', 'rollback', 'revertir',
-      'deshacer cambios', 'restaurar original', 'formato fábrica',
-      'borrar todo', 'eliminar registro', 'quitar acceso', 'desvincular',
-      'aniquilar', 'borrado seguro', 'limpieza profunda', 'vaciar papelera',
-      'quitar vaina', 'saca eso de ahí', 'borra esa vaina', 'limpia todo',
-      'resetear sistema', 'formatear disco', 'desinstalar app', 'quitar permiso',
-    ],
-    responses: [
-      '**Acción de eliminación detectada.** Por seguridad, confirmo: ¿deseas proceder con la eliminación?',
-      '**Solicitud de borrado recibida.** Recuerda que esta acción puede ser irreversible. ¿Confirmas?',
-      '**Modo eliminación.** Identificando los elementos a remover. Procederé con precaución.',
-    ],
-    details:
-      'Este grupo se activa cuando el usuario quiere **eliminar, borrar o deshacer algo**. Incluye acciones destructivas que requieren confirmación, como purgar datos, desinstalar componentes o revertir cambios.',
-  },
-
-
-  {
-    id: 'buscar',
-    name: 'Buscar',
-    iconName: 'buscar',
-    color: '#7bed9f',
-    keywords: [
-        'búscame','buscame eso',
-  'busca eso','búscalo',
-  'encuéntrame','encuentrame eso',
-  'quiero buscar','quiero encontrar',
-  'dónde está','donde esta eso',
-  'localiza eso','ubica eso',
-  'googlea eso','búscalo en google',
-  'investiga eso','averigua eso',
-  'mira a ver','chequea eso',
-  'encuentra info de','busca info de',
-  'qué hay de','que hay de eso',
-      'buscar', 'encontrar', 'localizar', 'ubicar', 'hallar', 'rastrear',
-      'seguir', 'perseguir', 'cazar', 'filtrar', 'seleccionar', 'elegir',
-      'escoger', 'optar', 'preferir', 'comparar', 'contrastar', 'diferenciar',
-      'distinguir', 'separar', 'aislar', 'extraer', 'obtener', 'recuperar',
-      'rescatar', 'descargar', 'importar', 'traer', 'fetch', 'query',
-      'search', 'find', 'lookup', 'scan', 'crawl', 'indexar', 'navegar',
-      'explorar datos', 'minería', 'scraping', 'parsing', 'regex',
-      'coincidencia', 'match', 'patrón', 'criterio', 'condición',
-      'dónde está', 'localiza eso', 'ubica eso', 'googlea eso', 'dame info de',
-      'qué hay de', 'checa esto', 'mira a ver', 'investiga', 'averigua',
-      'descubrir', 'detectar', 'identificar', 'reconocer', 'escanear',
-      'inspeccionar', 'analizar', 'validar búsqueda', 'filtrar resultados',
-      'ordenar por', 'agrupar por', 'buscar ahora', 'dame el dato',
-    ],
-    responses: [
-      '**Búsqueda iniciada.** Escaneando todas las fuentes disponibles para encontrar lo que necesitas.',
-      '**Rastreando información.** Aplicando filtros y criterios para localizar resultados precisos.',
-      '**Motor de búsqueda activo.** Procesando tu consulta en múltiples fuentes de datos.',
-    ],
-    details:
-      'Este grupo se activa cuando el usuario quiere **buscar, filtrar o localizar información específica**. Cubre desde búsquedas simples hasta minería de datos, scraping y consultas complejas con filtros.',
-  },
-
-  {
-    id: 'proteger',
-    name: 'Proteger',
-    iconName: 'proteger',
-    color: '#ff6b81',
-    keywords: [
-      'scan', 'encriptar',
-    ],
-    responses: [
-      '**Modo protección activado.** Iniciando operación de seguridad.',
-      '**Protocolo ejecutado.** Procesando comando de protección.',
-      '**Operación completada.** Seguridad reforzada.',
-    ],
-    details:
-      'Este grupo se activa cuando el usuario quiere **ejecutar acciones de seguridad**. Cubre scan de vulnerabilidades y encriptación de datos.',
-  },
-
   {
     id: 'automatizar',
     name: 'Automatizar',
@@ -308,12 +185,12 @@ const intentGroups = [
       'timer', 'automatizar', 'script', 'workflow',
     ],
     responses: [
-      '**Modo automatización activado.** Ejecutando tarea programada.',
-      '**Automatización en proceso.** Iniciando secuencia.',
-      '**Operación automática ejecutada.** Completado.',
+      '**Modo automatizacion activado.** Ejecutando tarea programada.',
+      '**Automatizacion en proceso.** Iniciando secuencia.',
+      '**Operacion automatica ejecutada.** Completado.',
     ],
     details:
-      'Este grupo se activa cuando el usuario quiere **ejecutar automáticas**. Cubre tareas programadas como timers y scripts.',
+      'Este grupo se activa cuando el usuario quiere **ejecutar automaticas**. Cubre tareas programadas como timers y scripts.',
   },
   {
     id: 'acciones_sistema',
@@ -325,9 +202,9 @@ const intentGroups = [
       'imprimir', 'print', 'scroll up', 'scroll down',
     ],
     responses: [
-      '**Acción ejecutada.** Comando procesado',
-      '**Control del sistema activado.** Procesando instrucción.',
-      '**Operación completada.**',
+      '**Accion ejecutada.** Comando procesado',
+      '**Control del sistema activado.** Procesando instruccion.',
+      '**Operacion completada.**',
     ],
     details:
       'Este grupo se activa para controlar **funciones nativas del navegador** como abrir consola, pantalla completa, recargar o imprimir.',
@@ -343,19 +220,13 @@ const decisionRules = [
   },
   {
     intentId: 'acciones_sistema',
-    triggerKeywords: ['minimizar', 'colapsar', 'cerrar menú', 'abrir menú', 'sidebar', 'menú', 'menu', 'saca el menú', 'quita el lateral', 'abre el lateral', 'esconder menú', 'ocultar lateral', 'mostrar lateral', 'barra lateral'],
+    triggerKeywords: ['minimizar', 'colapsar', 'cerrar menu', 'abrir menu', 'sidebar', 'menu', 'saca el menu', 'quita el lateral', 'abre el lateral', 'esconder menu', 'ocultar lateral', 'mostrar lateral', 'barra lateral'],
     action: 'toggle_sidebar',
     priority: 100,
   },
   {
-    intentId: 'eliminar',
-    triggerKeywords: ['limpiar chat', 'borrar todo', 'vaciar chat', 'borrar historial', 'vuela el chat', 'reset chat', 'comenzar de cero', 'limpia todo el chat', 'borrar la conversación', 'reiniciar chat', 'vuela el historial', 'limpieza total','clean chat', 'clear chart', 'reset chat', 'clear'],
-    action: 'clear_chat',
-    priority: 100,
-  },
-  {
     intentId: 'acciones_sistema',
-    triggerKeywords: ['recargar', 'refresh', 'refrescar', 'f5', 'reiniciar', 'da la lu de nuevo', 'actualiza', 'actualizar página', 'recargar sistema', 'f5 f5', 'resetear vista'],
+    triggerKeywords: ['recargar', 'refresh', 'refrescar', 'f5', 'reiniciar', 'da la lu de nuevo', 'actualiza', 'actualizar pagina', 'recargar sistema', 'f5 f5', 'resetear vista'],
     action: 'reload_page',
     priority: 100,
   },
@@ -379,106 +250,25 @@ const decisionRules = [
   },
   {
     intentId: 'visualizar',
-    triggerKeywords: ['ver video', 'ver tutorial', 'tutorial', 'reproducir', 'video', 'youtube'],
+    triggerKeywords: ['reproducir video'],
     action: 'open_youtube',
     queryExtraction: true,
     urlTemplate: 'https://www.youtube.com/results?search_query={query}',
     fallbackUrl: 'https://www.youtube.com/',
     label: 'Abrir en YouTube',
-    description: 'Se encontró contenido de video. Puedes verlo en YouTube.',
+    description: 'Se encontro contenido de video. Puedes verlo en YouTube.',
     priority: 30,
   },
   {
     intentId: 'visualizar',
-    triggerKeywords: [
-      'ver',
-    ],
+    triggerKeywords: ['navegar en la web', 'navegar'],
     action: 'open_search',
     queryExtraction: true,
     urlTemplate: 'https://www.google.com/search?q={query}',
     fallbackUrl: 'https://www.google.com/',
     label: 'Buscar en Google',
-    description: 'Búsqueda preparada. Puedes abrirla en el navegador.',
+    description: 'Busqueda preparada. Puedes abrirla en el navegador.',
     priority: 20,
-  },
-  {
-    intentId: 'visualizar',
-    triggerKeywords: [
-      'analizar', 'monitorear', 'supervisar', 'revisar', 'inspeccionar',
-      'chequear', 'comprobar', 'verificar', 'detectar', 'escanear',
-      'rastrear', 'observar', 'estudiar', 'investigar', 'indagar',
-      'contemplar', 'identificar', 'reconocer', 'descubrir',
-    ],
-    action: 'background_search',
-    queryExtraction: true,
-    urlTemplate: null,
-    fallbackUrl: null,
-    label: null,
-    description: 'Análisis realizado internamente.',
-    priority: 10,
-  },
-  {
-    intentId: 'buscar',
-    triggerKeywords: [
-      'buscar', 'encontrar', 'localizar', 'ubicar', 'hallar', 'search',
-      'find', 'lookup', 'navegar', 'googlear',
-    ],
-    action: 'open_search',
-    queryExtraction: true,
-    urlTemplate: 'https://www.google.com/search?q={query}',
-    fallbackUrl: 'https://www.google.com/',
-    label: 'Buscar en Google',
-    description: 'Búsqueda preparada. Puedes abrirla en el navegador.',
-    priority: 20,
-  },
-  {
-    intentId: 'buscar',
-    triggerKeywords: [
-      'filtrar', 'rastrear', 'extraer', 'scan', 'crawl', 'regex',
-      'scraping', 'parsing', 'minería', 'indexar', 'seleccionar',
-      'aislar', 'obtener', 'recuperar', 'fetch', 'query',
-    ],
-    action: 'background_search',
-    queryExtraction: true,
-    urlTemplate: null,
-    fallbackUrl: null,
-    label: null,
-    description: 'Procesamiento interno completado.',
-    priority: 10,
-  },
-  {
-    intentId: 'eliminar',
-    triggerKeywords: null,
-    action: 'confirm_action',
-    queryExtraction: false,
-    urlTemplate: null,
-    fallbackUrl: null,
-    label: null,
-    description: 'Esta acción requiere tu confirmación antes de proceder.',
-    priority: 50,
-  },
-
-  {
-    intentId: 'proteger',
-    triggerKeywords: ['scan', 'encriptar'],
-    action: 'execute_protection',
-    queryExtraction: false,
-    urlTemplate: null,
-    fallbackUrl: null,
-    label: null,
-    description: 'Ejecutando protección.',
-    priority: 50,
-  },
-  {
-    intentId: 'proteger',
-    triggerKeywords: null,
-    action: 'respond_only',
-    queryExtraction: false,
-    urlTemplate: null,
-    fallbackUrl: null,
-    label: null,
-    description: null,
-    priority: 0,
   },
   {
     intentId: 'automatizar',
@@ -499,7 +289,7 @@ const decisionRules = [
     urlTemplate: null,
     fallbackUrl: null,
     label: null,
-    description: 'Ejecutando automatización.',
+    description: 'Ejecutando automatizacion.',
     priority: 50,
   },
   {
@@ -804,13 +594,13 @@ const availableActions = [
   {
     id: 'open_search',
     label: 'Buscar',
-    keywords: ['ver', 'buscar', 'google'],
+    keywords: ['navegar en la web', 'navegar'],
     icon: '🔍',
   },
   {
     id: 'open_youtube',
     label: 'Ver Video',
-    keywords: ['ver video', 'youtube', 'video'],
+    keywords: ['reproducir video'],
     icon: '📺',
   },
   {

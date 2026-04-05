@@ -625,7 +625,7 @@ function App() {
           <h3 className="section-title">Grupos de Intención</h3>
           <div className="intent-groups-list">
             {intentGroups
-              .filter((group) => ['automatizar', 'acciones_sistema'].includes(group.id))
+              .filter((group) => ['visualizar', 'automatizar', 'acciones_sistema'].includes(group.id))
               .map((group) => (
               <div key={group.id} className="sidebar-group" style={{ '--group-color': group.color }}>
                 <div className="group-header">
@@ -786,7 +786,7 @@ function App() {
             </button>
           </div>
           <p className="input-hint">
-            FlowBot detecta intenciones como: <em>visualizar, crear, eliminar, buscar, modificar, enviar, seguridad, ayuda, informar, automatizar</em>
+            FlowBot detecta intenciones como: <em>visualizar, automatizar y acciones de sistema</em>
           </p>
           </div>
         </div>
