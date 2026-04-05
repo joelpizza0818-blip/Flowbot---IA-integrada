@@ -4,11 +4,11 @@ import BackgroundLogo from './components/BackgroundLogo';
 import ChatMessage from './components/ChatMessage';
 import IntentIcon from './components/IntentIcon';
 import { generateBotResponse, intentGroups, availableActions } from './chatbotLogic';
+import { CONTEXT_WINDOW_SIZE } from './contextPrompt';
 import './App.css';
 
 const MOBILE_BREAKPOINT = 768;
 const KEYBOARD_THRESHOLD = 120;
-const CONTEXT_WINDOW_SIZE = 3;
 
 function getTimeString() {
   return new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });

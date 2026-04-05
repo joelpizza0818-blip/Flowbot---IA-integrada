@@ -1,3 +1,5 @@
+import { buildRecentContextPrompt } from './contextPrompt';
+
 const AI_UNAVAILABLE_MESSAGE =
   'El modelo de IA no esta disponible en este momento. Intenta de nuevo en unos minutos.';
 
@@ -158,40 +160,6 @@ export async function fetchGeminiAI(userMessage) {
 export async function getBotResponse(prompt) {
   const result = await fetchGeminiAI(prompt);
   return result ?? "No puedo responder ahora mismo, intenta más tarde.";
-}
-
-function buildRecentContextPrompt(userMessage, conversationHistory = []) {
-  const trimmed = typeof userMessage === 'string' ? userMessage.trim() : '';
-  if (!trimmed) return '';
-
-  const recentMessages = Array.isArray(conversationHistory)
-    ? conversationHistory
-      .slice(-3)
-      .filter((message) => {
-        const hasText = typeof message?.text === 'string' && message.text.trim();
-        const hasValidSender = message?.sender === 'user' || message?.sender === 'bot';
-        return hasText && hasValidSender;
-      })
-      .map((message) => ({
-        sender: message.sender,
-        text: message.text.trim(),
-      }))
-    : [];
-
-  const lastMessage = recentMessages[recentMessages.length - 1];
-  if (!lastMessage || lastMessage.sender !== 'user') {
-    return trimmed;
-  }
-
-  const contextBlock = recentMessages
-    .map((message) => `${message.sender === 'user' ? 'Usuario' : 'FlowBot'}: ${message.text}`)
-    .join('\n');
-
-  return [
-    'Responde usando solo el contexto de los ultimos 3 mensajes.',
-    'Asegurate de responder al ultimo mensaje del usuario.',
-    contextBlock,
-  ].join('\n');
 }
 
 const intentGroups = [
