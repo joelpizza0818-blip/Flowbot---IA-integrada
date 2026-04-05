@@ -8,6 +8,7 @@ import { CONTEXT_WINDOW_SIZE, getContextUsage } from './contextPrompt';
 import './App.css';
 
 const MOBILE_BREAKPOINT = 768;
+const LARGE_DESKTOP_BREAKPOINT = 1280;
 const KEYBOARD_THRESHOLD = 120;
 
 function getTimeString() {
@@ -48,7 +49,9 @@ function App() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);  const [isComposerFocused, setIsComposerFocused] = useState(false);
   const [timerAlert, setTimerAlert] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 768);
+  const [sidebarOpen, setSidebarOpen] = useState(() => (
+    window.innerWidth > MOBILE_BREAKPOINT && window.innerWidth < LARGE_DESKTOP_BREAKPOINT
+  ));
   const [viewportMetrics, setViewportMetrics] = useState(() => getViewportMetrics());
   const [navigationUrl, setNavigationUrl] = useState(null);
   const [isAIOnline, setIsAIOnline] = useState(true);

@@ -104,10 +104,7 @@ export function buildRecentContextPrompt(userMessage, conversationHistory = []) 
 
   const contextHint = shouldUseConversationContext(trimmed, recentMessages)
     ? 'El mensaje actual parece una continuacion o una edicion breve. Usa el historial para completar lo implicito.'
-    : 'El mensaje actual parece autosuficiente. Responde directo y Si el mensaje actual puede responderse por sí solo, NO dependas del historial.'
-    'Si el mensaje implica continuación, modificación o referencia, usa el historial SOLO para completar lo necesario.'
-    'Nunca repitas información innecesaria del historial'
-    'No asumas que el historial es correcto o relevante. Puede estar incompleto o desactualizado.';
+    : 'El mensaje actual parece autosuficiente. Responde directo y usa el historial solo si agrega claridad.';
 
   return [
     'Prioridad maxima: responde al mensaje actual del usuario.',
