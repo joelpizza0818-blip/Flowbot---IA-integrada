@@ -57,6 +57,8 @@ function App() {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [searchModalType, setSearchModalType] = useState(null); // 'search' o 'youtube'
   const [searchModalInput, setSearchModalInput] = useState('');
+  const [timerModalOpen, setTimerModalOpen] = useState(false);
+  const [timerModalValue, setTimerModalValue] = useState('');
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
@@ -207,30 +209,9 @@ function App() {
             setIsEncrypting(true);
             setTimeout(() => setIsEncrypting(false), 5000);
           } else if (action === 'set_timer') {
-            console.log("Timer action triggered!", actionObj);
-            const rawQuery = actionObj.query || '';
-            const numMatch = rawQuery.match(/\d+/);
-            let seconds = numMatch ? parseInt(numMatch[0], 10) : 10;
-            
-            if (rawQuery.toLowerCase().includes('minuto')) {
-              seconds *= 60;
-            }
-            
-            const label = rawQuery || 'Tarea programada';
-            console.log(`Starting timer for ${seconds} seconds with label: ${label}`);
-            
-            const timerId = setInterval(() => {
-              setTimerAlert((prev) => {
-                if (!prev || prev.remaining <= 1) {
-                  clearInterval(timerId);
-                  return prev ? { ...prev, remaining: 0, finished: true } : null;
-                }
-                return { ...prev, remaining: prev.remaining - 1 };
-              });
-            }, 1000);
-
-            setTimerAlert({ label, remaining: seconds, total: seconds, finished: false });
-            console.log("setTimerAlert was called with", { label, remaining: seconds });
+            // Abrir modal para que el usuario ingrese el tiempo
+            setTimerModalOpen(true);
+            setTimerModalValue('');
           }
         });
       }
@@ -266,6 +247,47 @@ function App() {
   function handleClearChat() {
     setMessages([createWelcomeMessage()]);
     nextId.current = 1;
+  }
+
+  function startTimer(timeInput) {
+    const trimmed = timeInput.trim();
+    if (!trimmed) return;
+
+    let seconds = 0;
+    const timeMatch = trimmed.match(/(\d+(?:[.,]\d+)?)\s*(s|seg|segundo|minuto|min|m|h|hora)?/i);
+    
+    if (timeMatch) {
+      const value = parseFloat(timeMatch[1].replace(',', '.'));
+      const unit = (timeMatch[2] || 's').toLowerCase();
+      
+      if (unit.startsWith('m') && unit.length > 1) { // minuto o min
+        seconds = Math.floor(value * 60);
+      } else if (unit.startsWith('h')) { // hora
+        seconds = Math.floor(value * 3600);
+      } else {
+        seconds = Math.floor(value); // segundos
+      }
+    } else {
+      seconds = parseInt(trimmed, 10);
+    }
+
+    if (!seconds || seconds <= 0) {
+      alert('Por favor ingresa un tiempo válido mayor a 0');
+      return;
+    }
+
+    const label = `Temporizador: ${timeInput}`;
+    const timerId = setInterval(() => {
+      setTimerAlert((prev) => {
+        if (!prev || prev.remaining <= 1) {
+          clearInterval(timerId);
+          return prev ? { ...prev, remaining: 0, finished: true } : null;
+        }
+        return { ...prev, remaining: prev.remaining - 1 };
+      });
+    }, 1000);
+
+    setTimerAlert({ label, remaining: seconds, total: seconds, finished: false });
   }
 
   function handleActionClick(actionId) {
@@ -310,16 +332,8 @@ function App() {
       setIsEncrypting(true);
       setTimeout(() => setIsEncrypting(false), 5000);
     } else if (actionId === 'set_timer') {
-      setTimerAlert({ label: 'Tarea rápida', remaining: 10, total: 10, finished: false });
-      const timerId = setInterval(() => {
-        setTimerAlert((prev) => {
-          if (!prev || prev.remaining <= 1) {
-            clearInterval(timerId);
-            return prev ? { ...prev, remaining: 0, finished: true } : null;
-          }
-          return { ...prev, remaining: prev.remaining - 1 };
-        });
-      }, 1000);
+      setTimerModalOpen(true);
+      setTimerModalValue('');
     } else if (actionId === 'open_search') {
       setSearchModalType('search');
       setSearchModalOpen(true);
@@ -546,6 +560,58 @@ function App() {
           </div>
         </div>
       )}
+
+      {timerModalOpen && (
+        <div className="timer-modal-overlay" onClick={() => { setTimerModalOpen(false); setTimerModalValue(''); }}>
+          <div className="timer-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="timer-modal-header">
+              <h3>⏱️ Configurar Temporizador</h3>
+              <button className="timer-modal-close" onClick={() => { setTimerModalOpen(false); setTimerModalValue(''); }}>✕</button>
+            </div>
+            
+            <div className="timer-modal-body">
+              <input
+                type="text"
+                className="timer-modal-input"
+                placeholder="Ej: 5, 30 segundos, 2 minutos, 1 hora"
+                value={timerModalValue}
+                onChange={(e) => setTimerModalValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && timerModalValue.trim()) {
+                    startTimer(timerModalValue);
+                    setTimerModalOpen(false);
+                    setTimerModalValue('');
+                  }
+                }}
+                autoFocus
+              />
+              <div className="timer-modal-examples">
+                <p>Ejemplos: <code>5</code>, <code>30s</code>, <code>2 minutos</code>, <code>1 hora</code></p>
+              </div>
+            </div>
+            
+            <div className="timer-modal-footer">
+              <button className="timer-modal-cancel" onClick={() => { setTimerModalOpen(false); setTimerModalValue(''); }}>
+                Cancelar
+              </button>
+              <button 
+                className="timer-modal-submit" 
+                onClick={() => {
+                  if (timerModalValue.trim()) {
+                    startTimer(timerModalValue);
+                    setTimerModalOpen(false);
+                    setTimerModalValue('');
+                  }
+                }}
+                disabled={!timerModalValue.trim()}
+              >
+                Iniciar Timer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-header">
           <FlowLogo size={36} />
