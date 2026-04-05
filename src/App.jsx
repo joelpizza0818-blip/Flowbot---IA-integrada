@@ -153,12 +153,14 @@ function App() {
       time: getTimeString(),
     };
 
+    const recentConversation = [...messages, userMsg].slice(-3);
+
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
 
     (async () => {
-      const response = await generateBotResponse(trimmed);
+      const response = await generateBotResponse(trimmed, recentConversation);
       const isOffline = response.text?.includes('no esta disponible') || response.text?.includes('intenta más tarde');
       setIsAIOnline(!isOffline);
       
