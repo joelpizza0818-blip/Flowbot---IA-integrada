@@ -682,9 +682,31 @@ function App() {
             {isEmptyState && <BackgroundLogo />}
             {isEmptyState && (
               <section className="empty-state-hero" aria-label="Portada de FlowBot">
+                <div className="empty-state-navbar">
+                  <div className="navbar-left">
+                    <div className="navbar-logo">
+                      <FlowLogo size={32} />
+                      <span className="navbar-title">FlowBot</span>
+                      <span className="navbar-badge">En desarrollo</span>
+                    </div>
+                  </div>
+                  <div className="navbar-center">
+                    <span className="navbar-subtitle">Desarrollo Web Asistido por IA</span>
+                  </div>
+                  <div className="navbar-right">
+                    <div className="navbar-context">
+                      <span className="context-label">Contexto</span>
+                      <span className="context-value">{usedContextSlots}/{CONTEXT_WINDOW_SIZE}</span>
+                    </div>
+                    <button className="navbar-clear-btn" onClick={handleClearChat} title="Limpiar chat" aria-label="Limpiar chat">
+                      <IntentIcon name="clear" size={16} />
+                    </button>
+                  </div>
+                </div>
+
                 <div className="empty-state-kicker">
                   <span className="empty-state-kicker-dot"></span>
-                  IA conversacional con acciones reales
+                  Modelo en desarrollo para acelerar tu flujo de trabajo
                 </div>
 
                 <div className="empty-state-head">
@@ -693,11 +715,13 @@ function App() {
                   </div>
 
                   <div className="empty-state-copy">
-                    <p className="empty-state-eyebrow">FlowBot</p>
-                    <h2 className="empty-state-title">Todo tu flujo en una sola conversacion.</h2>
-                    <p className="empty-state-description">
-                      Pregunta, busca, automatiza y controla la interfaz sin perder el contexto ni el ritmo.
-                    </p>
+                    <p className="empty-state-eyebrow">Comenzar</p>
+                    <h2 className="empty-state-title">Tu asistente de desarrollo web.</h2>
+                    <div className="empty-state-description-container">
+                      <p className="empty-state-description">
+                        <span className="typing-text">Pregunta, busca, automatiza y controla</span>
+                      </p>
+                    </div>
                   </div>
                 </div>
 
