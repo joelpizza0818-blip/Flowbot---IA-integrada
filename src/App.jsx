@@ -4,7 +4,7 @@ import BackgroundLogo from './components/BackgroundLogo';
 import ChatMessage from './components/ChatMessage';
 import IntentIcon from './components/IntentIcon';
 import { generateBotResponse, intentGroups, availableActions } from './chatbotLogic';
-import { CONTEXT_WINDOW_SIZE } from './contextPrompt';
+import { CONTEXT_WINDOW_SIZE, getContextUsage } from './contextPrompt';
 import './App.css';
 
 const MOBILE_BREAKPOINT = 768;
@@ -62,9 +62,7 @@ function App() {
   const inputRef = useRef(null);
   const nextId = useRef(1);
   const isKeyboardVisible = viewportMetrics.isCompact && viewportMetrics.keyboardOffset > 0;
-  const contextMessages = messages.slice(-CONTEXT_WINDOW_SIZE);
-  const usedContextSlots = Math.min(contextMessages.length, CONTEXT_WINDOW_SIZE);
-  const remainingContextSlots = Math.max(CONTEXT_WINDOW_SIZE - usedContextSlots, 0);
+  const { remainingSlots: remainingContextSlots } = getContextUsage(messages);
   const contextProgress = (remainingContextSlots / CONTEXT_WINDOW_SIZE) * 100;
   const appContainerClassName = [
     'app-container',
@@ -158,7 +156,7 @@ function App() {
       time: getTimeString(),
     };
 
-    const recentConversation = [...messages, userMsg].slice(-CONTEXT_WINDOW_SIZE);
+    const recentConversation = [...messages, userMsg];
 
     setMessages((prev) => [...prev, userMsg]);
     setInput('');

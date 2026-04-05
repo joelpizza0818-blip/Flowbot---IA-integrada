@@ -1,4 +1,10 @@
-import { buildRecentContextPrompt, CONTEXT_WINDOW_SIZE, shouldUseConversationContext } from './src/contextPrompt.js';
+import {
+  buildRecentContextPrompt,
+  CONTEXT_WINDOW_SIZE,
+  getContextUsage,
+  getContextWindowMessages,
+  shouldUseConversationContext,
+} from './src/contextPrompt.js';
 
 const scenarios = [
   {
@@ -41,6 +47,18 @@ const scenarios = [
     ],
     expectContext: false,
   },
+  {
+    name: 'Dos mensajes del bot no consumen dos slots de usuario',
+    message: 'Hazlo responsive',
+    history: [
+      { sender: 'user', text: 'Crea una card en React' },
+      { sender: 'bot', text: 'Aqui tienes la estructura JSX.' },
+      { sender: 'bot', text: 'Y aqui va el CSS base.' },
+      { sender: 'user', text: 'Hazlo responsive' },
+    ],
+    expectContext: true,
+    expectUsedSlots: 2,
+  },
 ];
 
 let failures = 0;
@@ -50,8 +68,11 @@ console.log(`Ventana de contexto configurada: ${CONTEXT_WINDOW_SIZE} mensajes\n`
 for (const scenario of scenarios) {
   const shouldUse = shouldUseConversationContext(scenario.message, scenario.history);
   const prompt = buildRecentContextPrompt(scenario.message, scenario.history);
+  const { usedSlots } = getContextUsage(scenario.history);
+  const windowMessages = getContextWindowMessages(scenario.history);
   const usingContext = prompt.includes('Contexto reciente de apoyo:');
-  const passed = usingContext === scenario.expectContext && shouldUse === scenario.expectContext;
+  const slotsMatch = typeof scenario.expectUsedSlots === 'number' ? usedSlots === scenario.expectUsedSlots : true;
+  const passed = usingContext === scenario.expectContext && shouldUse === scenario.expectContext && slotsMatch;
 
   if (!passed) {
     failures += 1;
@@ -61,6 +82,8 @@ for (const scenario of scenarios) {
   console.log(`Mensaje: ${scenario.message}`);
   console.log(`Debe usar contexto: ${scenario.expectContext ? 'si' : 'no'}`);
   console.log(`Detectado: ${usingContext ? 'si' : 'no'}`);
+  console.log(`Slots usados: ${usedSlots}/${CONTEXT_WINDOW_SIZE}`);
+  console.log(`Mensajes dentro de la ventana: ${windowMessages.length}`);
   console.log(`Prompt final: ${prompt}`);
   console.log('='.repeat(72));
 }

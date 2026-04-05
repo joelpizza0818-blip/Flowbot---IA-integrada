@@ -12,7 +12,6 @@ const CONTEXT_REFERENCE_PATTERNS = [
 function normalizeConversationHistory(conversationHistory = []) {
   return Array.isArray(conversationHistory)
     ? conversationHistory
-      .slice(-CONTEXT_WINDOW_SIZE)
       .filter((message) => {
         const hasText = typeof message?.text === 'string' && message.text.trim();
         const hasValidSender = message?.sender === 'user' || message?.sender === 'bot';
@@ -25,11 +24,42 @@ function normalizeConversationHistory(conversationHistory = []) {
     : [];
 }
 
+export function getContextWindowMessages(conversationHistory = []) {
+  const normalizedHistory = normalizeConversationHistory(conversationHistory);
+  const userIndexes = normalizedHistory.reduce((indexes, message, index) => {
+    if (message.sender === 'user') {
+      indexes.push(index);
+    }
+    return indexes;
+  }, []);
+
+  if (userIndexes.length === 0) {
+    return [];
+  }
+
+  const firstIncludedUserIndex = userIndexes[Math.max(0, userIndexes.length - CONTEXT_WINDOW_SIZE)];
+  return normalizedHistory.slice(firstIncludedUserIndex);
+}
+
+export function getContextUsage(conversationHistory = []) {
+  const contextMessages = getContextWindowMessages(conversationHistory);
+  const usedSlots = Math.min(
+    contextMessages.filter((message) => message.sender === 'user').length,
+    CONTEXT_WINDOW_SIZE,
+  );
+
+  return {
+    usedSlots,
+    remainingSlots: Math.max(CONTEXT_WINDOW_SIZE - usedSlots, 0),
+    contextMessages,
+  };
+}
+
 export function shouldUseConversationContext(userMessage, conversationHistory = []) {
   const trimmed = typeof userMessage === 'string' ? userMessage.trim() : '';
   if (!trimmed) return false;
 
-  const normalizedHistory = normalizeConversationHistory(conversationHistory);
+  const normalizedHistory = getContextWindowMessages(conversationHistory);
   const previousMessages = normalizedHistory.slice(0, -1);
   if (previousMessages.length === 0) {
     return false;
@@ -43,7 +73,7 @@ export function buildRecentContextPrompt(userMessage, conversationHistory = []) 
   const trimmed = typeof userMessage === 'string' ? userMessage.trim() : '';
   if (!trimmed) return '';
 
-  const recentMessages = normalizeConversationHistory(conversationHistory);
+  const recentMessages = getContextWindowMessages(conversationHistory);
   const lastMessage = recentMessages[recentMessages.length - 1];
 
   if (!lastMessage || lastMessage.sender !== 'user') {
