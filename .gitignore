@@ -79,6 +79,7 @@ coverage/
 tmp/
 temp/
 *.tmp
+codex-automation-report.md
 
 # =========================
 # TypeScript

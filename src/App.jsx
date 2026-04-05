@@ -62,8 +62,8 @@ function App() {
   const inputRef = useRef(null);
   const nextId = useRef(1);
   const isKeyboardVisible = viewportMetrics.isCompact && viewportMetrics.keyboardOffset > 0;
-  const { remainingSlots: remainingContextSlots } = getContextUsage(messages);
-  const contextProgress = (remainingContextSlots / CONTEXT_WINDOW_SIZE) * 100;
+  const { usedSlots: usedContextSlots } = getContextUsage(messages);
+  const contextProgress = (usedContextSlots / CONTEXT_WINDOW_SIZE) * 100;
   const appContainerClassName = [
     'app-container',
     viewportMetrics.isCompact ? 'is-mobile' : '',
@@ -648,10 +648,10 @@ function App() {
                 <span className="status-dot"></span>
                 {isAIOnline ? 'En línea' : 'Offline'}
               </span>
-              <div className="context-meter" aria-label={`Contexto disponible: ${remainingContextSlots} de ${CONTEXT_WINDOW_SIZE} espacios libres`}>
+              <div className="context-meter" aria-label={`Contexto activo: ${usedContextSlots} de ${CONTEXT_WINDOW_SIZE} mensajes recientes`}>
                 <div className="context-meter-copy">
                   <span className="context-meter-label">Contexto</span>
-                  <span className="context-meter-value">Queda {remainingContextSlots}/{CONTEXT_WINDOW_SIZE}</span>
+                  <span className="context-meter-value">Usa {usedContextSlots}/{CONTEXT_WINDOW_SIZE}</span>
                 </div>
                 <div className="context-meter-track" aria-hidden="true">
                   <div className="context-meter-fill" style={{ width: `${contextProgress}%` }} />

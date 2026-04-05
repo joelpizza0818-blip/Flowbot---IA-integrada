@@ -8,14 +8,16 @@ import {
 
 const scenarios = [
   {
-    name: 'Mensaje nuevo e independiente',
+    name: 'Pregunta nueva y autosuficiente',
     message: 'Que es React?',
     history: [
-      { sender: 'bot', text: 'Te mostre un ejemplo de login.' },
-      { sender: 'user', text: 'Perfecto, gracias.' },
+      { sender: 'user', text: 'Hazme un script de bash' },
+      { sender: 'bot', text: 'Aqui tienes un script de bash.' },
       { sender: 'user', text: 'Que es React?' },
     ],
-    expectContext: false,
+    expectPromptHasContext: true,
+    expectShouldLeanOnContext: false,
+    expectUsedSlots: 3,
   },
   {
     name: 'Referencia explicita a la respuesta anterior',
@@ -25,39 +27,57 @@ const scenarios = [
       { sender: 'bot', text: 'React es una biblioteca para interfaces.' },
       { sender: 'user', text: 'Explicalo mejor' },
     ],
-    expectContext: true,
+    expectPromptHasContext: true,
+    expectShouldLeanOnContext: true,
+    expectUsedSlots: 3,
   },
   {
-    name: 'Seguimiento con instruccion corta',
-    message: 'Hazlo en TypeScript',
+    name: 'Seguimiento corto tipo transformacion',
+    message: 'Mas corto',
     history: [
-      { sender: 'user', text: 'Crea un componente de login en React' },
-      { sender: 'bot', text: 'Aqui tienes el componente en JavaScript.' },
-      { sender: 'user', text: 'Hazlo en TypeScript' },
+      { sender: 'user', text: 'Que es TypeScript?' },
+      { sender: 'bot', text: 'TypeScript es JavaScript con tipos estaticos y mejores herramientas.' },
+      { sender: 'user', text: 'Mas corto' },
     ],
-    expectContext: true,
+    expectPromptHasContext: true,
+    expectShouldLeanOnContext: true,
+    expectUsedSlots: 3,
   },
   {
-    name: 'Pregunta corta pero autosuficiente',
-    message: 'Dame 3 ideas de negocio',
+    name: 'Pregunta eliptica apoyada por el contexto',
+    message: 'Que ts',
     history: [
-      { sender: 'user', text: 'Hazme un script de bash' },
-      { sender: 'bot', text: 'Aqui tienes un script de bash.' },
-      { sender: 'user', text: 'Dame 3 ideas de negocio' },
+      { sender: 'user', text: 'Que es React?' },
+      { sender: 'bot', text: 'React es una biblioteca para interfaces.' },
+      { sender: 'user', text: 'Que ts' },
     ],
-    expectContext: false,
+    expectPromptHasContext: true,
+    expectShouldLeanOnContext: true,
+    expectUsedSlots: 3,
   },
   {
-    name: 'Dos mensajes del bot no consumen dos slots de usuario',
-    message: 'Hazlo responsive',
+    name: 'La ventana se limita a 6 mensajes bot y user',
+    message: 'Resume eso',
     history: [
-      { sender: 'user', text: 'Crea una card en React' },
-      { sender: 'bot', text: 'Aqui tienes la estructura JSX.' },
-      { sender: 'bot', text: 'Y aqui va el CSS base.' },
-      { sender: 'user', text: 'Hazlo responsive' },
+      { sender: 'user', text: 'Mensaje 1' },
+      { sender: 'bot', text: 'Respuesta 1' },
+      { sender: 'user', text: 'Mensaje 2' },
+      { sender: 'bot', text: 'Respuesta 2' },
+      { sender: 'user', text: 'Mensaje 3' },
+      { sender: 'bot', text: 'Respuesta 3' },
+      { sender: 'user', text: 'Resume eso' },
     ],
-    expectContext: true,
-    expectUsedSlots: 2,
+    expectPromptHasContext: true,
+    expectShouldLeanOnContext: true,
+    expectUsedSlots: 6,
+    expectWindowTexts: [
+      'Respuesta 1',
+      'Mensaje 2',
+      'Respuesta 2',
+      'Mensaje 3',
+      'Respuesta 3',
+      'Resume eso',
+    ],
   },
 ];
 
@@ -66,13 +86,21 @@ let failures = 0;
 console.log(`Ventana de contexto configurada: ${CONTEXT_WINDOW_SIZE} mensajes\n`);
 
 for (const scenario of scenarios) {
-  const shouldUse = shouldUseConversationContext(scenario.message, scenario.history);
+  const shouldLeanOnContext = shouldUseConversationContext(scenario.message, scenario.history);
   const prompt = buildRecentContextPrompt(scenario.message, scenario.history);
   const { usedSlots } = getContextUsage(scenario.history);
   const windowMessages = getContextWindowMessages(scenario.history);
-  const usingContext = prompt.includes('Contexto reciente de apoyo:');
-  const slotsMatch = typeof scenario.expectUsedSlots === 'number' ? usedSlots === scenario.expectUsedSlots : true;
-  const passed = usingContext === scenario.expectContext && shouldUse === scenario.expectContext && slotsMatch;
+  const promptHasContext = prompt.includes('Contexto reciente de apoyo:');
+  const slotsMatch = usedSlots === scenario.expectUsedSlots;
+  const windowMatch = Array.isArray(scenario.expectWindowTexts)
+    ? scenario.expectWindowTexts.every((text, index) => windowMessages[index]?.text === text)
+    : true;
+  const passed = (
+    promptHasContext === scenario.expectPromptHasContext
+    && shouldLeanOnContext === scenario.expectShouldLeanOnContext
+    && slotsMatch
+    && windowMatch
+  );
 
   if (!passed) {
     failures += 1;
@@ -80,10 +108,10 @@ for (const scenario of scenarios) {
 
   console.log(`${passed ? 'PASS' : 'FAIL'} - ${scenario.name}`);
   console.log(`Mensaje: ${scenario.message}`);
-  console.log(`Debe usar contexto: ${scenario.expectContext ? 'si' : 'no'}`);
-  console.log(`Detectado: ${usingContext ? 'si' : 'no'}`);
-  console.log(`Slots usados: ${usedSlots}/${CONTEXT_WINDOW_SIZE}`);
-  console.log(`Mensajes dentro de la ventana: ${windowMessages.length}`);
+  console.log(`Prompt incluye contexto: ${promptHasContext ? 'si' : 'no'}`);
+  console.log(`Debe apoyarse en contexto: ${scenario.expectShouldLeanOnContext ? 'si' : 'no'}`);
+  console.log(`Detectado: ${shouldLeanOnContext ? 'si' : 'no'}`);
+  console.log(`Mensajes en ventana: ${usedSlots}/${CONTEXT_WINDOW_SIZE}`);
   console.log(`Prompt final: ${prompt}`);
   console.log('='.repeat(72));
 }
@@ -93,4 +121,4 @@ if (failures > 0) {
   globalThis.process.exit(1);
 }
 
-console.log('Debug completado: el mensaje actual tiene prioridad y el contexto solo entra cuando se pide implicitamente.');
+console.log('Debug completado: el mensaje actual mantiene la prioridad y el historial reciente se relee como apoyo.');
