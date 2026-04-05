@@ -8,11 +8,10 @@ const FALLBACK_API_KEYS = [
 ].filter(key => key && key.length > 0);
 const API_KEYS = PRIMARY_API_KEY ? [PRIMARY_API_KEY, ...FALLBACK_API_KEYS] : FALLBACK_API_KEYS;
 
-const PUBLIC_API_KEY = API_KEYS[0] || '';
 const PROXY_BASE_URL = (import.meta.env.VITE_PROXY_URL || '').replace(/\/$/, '');
 const SYSTEM_PROMPT =
   import.meta.env.VITE_SYSTEM_PROMPT ||
-  'Eres FLOWBOT, asistente de IA especializado en tareas y programación. IMPORTANTE: SIEMPRE completa tus respuestas. Si generas código, déjalo **100% funcional y completo**. Para consultas de código: muestra ejemplos claros y directos en bloques de código, explica qué hace en forma concisa. Para código complejo (login, formularios, etc.): completa el código entero sin cortarlo. Si el usuario solicita código complejo, realiza el código completo y disminuye las palabras explicativas. Para otras tareas: sé breve, usa Markdown y negritas. Nunca dejes respuestas incompletas o a mitad.';
+  'Eres FLOWBOT, asistente de IA especializado en tareas y programacion. IMPORTANTE: SIEMPRE completa tus respuestas. Si generas codigo, dejalo **100% funcional y completo**. Para consultas de codigo: muestra ejemplos claros y directos en bloques de codigo, explica que hace en forma concisa. Para codigo complejo (login, formularios, etc.): completa el codigo entero sin cortarlo. Si el usuario solicita codigo complejo, realiza el codigo completo y disminuye las palabras explicativas. Para otras tareas: se breve, usa Markdown y negritas. Nunca dejes respuestas incompletas o a mitad.';
 
 const CLIENT_MODELS = [
   'gemini-2.5-flash',
@@ -120,7 +119,7 @@ async function fetchGeminiDirect(userMessage) {
 
         if (!response.ok) {
           const statusMsg = response.status === 429 ? '(CUOTA AGOTADA)' : `(status ${response.status})`;
-          console.warn(`[FlowBot AI] ${model} clave ${API_KEYS.indexOf(apiKey) + 1} ${statusMsg} ? probando siguiente...`);
+          console.warn(`[FlowBot AI] ${model} clave ${API_KEYS.indexOf(apiKey) + 1} ${statusMsg} -> probando siguiente...`);
           if (response.status === 429) {
             await new Promise((r) => setTimeout(r, 1000));
           }
@@ -134,11 +133,11 @@ async function fetchGeminiDirect(userMessage) {
 
         const text = extractGeminiText(data);
         if (text) {
-          console.log(`[FlowBot AI] ? Respuesta servida por ${model} (clave ${API_KEYS.indexOf(apiKey) + 1})`);
+          console.log(`[FlowBot AI] Respuesta servida por ${model} (clave ${API_KEYS.indexOf(apiKey) + 1})`);
           return text;
         }
       } catch (error) {
-        console.warn(`[FlowBot AI] ${model} clave ${API_KEYS.indexOf(apiKey) + 1} error: ${error.message} ? probando siguiente...`);
+        console.warn(`[FlowBot AI] ${model} clave ${API_KEYS.indexOf(apiKey) + 1} error: ${error.message} -> probando siguiente...`);
       }
     }
   }
@@ -196,7 +195,7 @@ const intentGroups = [
     id: 'acciones_sistema',
     name: 'Acciones de Sistema',
     iconName: 'automatizar',
-    color: '#747d8c',
+    color: '#7b00ff',
     keywords: [
       'console', '<console>', 'pantalla completa', 'fullscreen', 'recargar', 'refresh',
       'imprimir', 'print', 'scroll up', 'scroll down',
@@ -261,7 +260,7 @@ const decisionRules = [
   },
   {
     intentId: 'visualizar',
-    triggerKeywords: ['navegar en la web', 'navegar'],
+    triggerKeywords: ['navegar'],
     action: 'open_search',
     queryExtraction: true,
     urlTemplate: 'https://www.google.com/search?q={query}',
@@ -409,15 +408,15 @@ function findFirstKeywordBounds(text, keywordPatterns) {
 }
 
 function trimSearchQuery(query) {
-  let cleanedQuery = query.trim().replace(/^[\s,.;:!?¡¿"']+/u, '');
+  let cleanedQuery = query.trim().replace(/^[\s,.;:!?'"()]+/u, '');
 
   while (cleanedQuery) {
     const [firstToken] = tokenizeWithPositions(cleanedQuery);
     if (!firstToken || !searchIntroFillers.has(firstToken.normalized)) break;
-    cleanedQuery = cleanedQuery.slice(firstToken.end).trim().replace(/^[\s,.;:!?¡¿"']+/u, '');
+    cleanedQuery = cleanedQuery.slice(firstToken.end).trim().replace(/^[\s,.;:!?'"()]+/u, '');
   }
 
-  return cleanedQuery.replace(/[.,;:!?¡¿"']+$/u, '').trim();
+  return cleanedQuery.replace(/[.,;:!?'"()]+$/u, '').trim();
 }
 
 function extractQueryForIntent(userMessage, intentId) {
@@ -586,15 +585,9 @@ const availableActions = [
     icon: '⬇️',
   },
   {
-    id: 'clear_chat',
-    label: 'Limpiar Chat',
-    keywords: ['limpiar', 'borrar todo', 'reset chat'],
-    icon: '🗑️',
-  },
-  {
     id: 'open_search',
     label: 'Buscar',
-    keywords: ['navegar en la web', 'navegar'],
+    keywords: ['navegar'],
     icon: '🔍',
   },
   {
@@ -602,18 +595,6 @@ const availableActions = [
     label: 'Ver Video',
     keywords: ['reproducir video'],
     icon: '📺',
-  },
-  {
-    id: 'system_scan',
-    label: 'Escanear',
-    keywords: ['scan', 'escanear'],
-    icon: '🔎',
-  },
-  {
-    id: 'data_encryption',
-    label: 'Encriptar',
-    keywords: ['encriptar', 'cifrar'],
-    icon: '🔐',
   },
   {
     id: 'set_timer',

@@ -45,10 +45,7 @@ function createWelcomeMessage() {
 function App() {
   const [messages, setMessages] = useState([createWelcomeMessage()]);
   const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  const [isEncrypting, setIsEncrypting] = useState(false);
-  const [isComposerFocused, setIsComposerFocused] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);  const [isComposerFocused, setIsComposerFocused] = useState(false);
   const [timerAlert, setTimerAlert] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 768);
   const [viewportMetrics, setViewportMetrics] = useState(() => getViewportMetrics());
@@ -198,16 +195,8 @@ function App() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           } else if (action === 'scroll_bottom') {
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-          } else if (action === 'clear_chat') {
-            setTimeout(() => handleClearChat(), 500);
           } else if (action === 'toggle_sidebar') {
             setSidebarOpen((prev) => !prev);
-          } else if (action === 'system_scan') {
-            setIsScanning(true);
-            setTimeout(() => setIsScanning(false), 5000);
-          } else if (action === 'data_encryption') {
-            setIsEncrypting(true);
-            setTimeout(() => setIsEncrypting(false), 5000);
           } else if (action === 'set_timer') {
             // Abrir modal para que el usuario ingrese el tiempo
             setTimerModalOpen(true);
@@ -305,7 +294,7 @@ function App() {
       console.log('%c FLOWBOT CONSOLE ABIERTA BRO', 'color: #00ff00; font-size: 18px; font-weight: bold; text-shadow: 0 0 10px #00ff00');
       console.log('%cAcciones disponibles:', 'color: #0088ff; font-size: 14px; font-weight: bold');
       console.log('%c• fullscreen, sidebar, reload, print, scroll_top, scroll_bottom', 'color: #00d4ff; font-size: 12px');
-      console.log('%c• clear_chat, search, youtube, scan, encryption, timer', 'color: #00d4ff; font-size: 12px');
+      console.log('%c? search, youtube, timer', 'color: #00d4ff; font-size: 12px');
       try {
         if (window.devtools?.open !== undefined) {
           window.devtools.open();
@@ -323,14 +312,6 @@ function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (actionId === 'scroll_bottom') {
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-    } else if (actionId === 'clear_chat') {
-      setTimeout(() => handleClearChat(), 500);
-    } else if (actionId === 'system_scan') {
-      setIsScanning(true);
-      setTimeout(() => setIsScanning(false), 5000);
-    } else if (actionId === 'data_encryption') {
-      setIsEncrypting(true);
-      setTimeout(() => setIsEncrypting(false), 5000);
     } else if (actionId === 'set_timer') {
       setTimerModalOpen(true);
       setTimerModalValue('');
@@ -403,13 +384,6 @@ function App() {
             <line x1="12" y1="3" x2="12" y2="15"/>
           </svg>
         );
-      case 'clear_chat':
-        return (
-          <svg {...svgProps}>
-            <polyline points="3 6 5 4 21 4"/>
-            <path d="M19 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4m3 0V2h8v2M10 9v6m4-6v6"/>
-          </svg>
-        );
       case 'open_search':
         return (
           <svg {...svgProps}>
@@ -422,23 +396,6 @@ function App() {
           <svg {...svgProps}>
             <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/>
             <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
-          </svg>
-        );
-      case 'system_scan':
-        return (
-          <svg {...svgProps}>
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            <circle cx="9" cy="10" r="0"/>
-            <circle cx="12" cy="10" r="0"/>
-            <circle cx="15" cy="10" r="0"/>
-          </svg>
-        );
-      case 'data_encryption':
-        return (
-          <svg {...svgProps}>
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            <circle cx="12" cy="16" r="1"/>
           </svg>
         );
       case 'set_timer':
@@ -455,27 +412,14 @@ function App() {
   }
 
   const quickActions = [
-    { label: 'Ver datos', prompt: 'Quiero ver mis datos y analizar el reporte' },
-    { label: 'Crear algo', prompt: 'Necesito crear un nuevo proyecto' },
-    { label: 'Buscar info', prompt: 'Buscar información sobre el sistema' },
-    { label: 'Ayuda', prompt: 'Necesito ayuda con las funcionalidades' },
+    { label: 'Navegar web', prompt: 'navegar noticias de tecnologia de hoy' },
+    { label: 'Video tutorial', prompt: 'reproducir video react hooks en espanol' },
+    { label: 'Temporizador', prompt: 'timer 10 minutos' },
+    { label: 'Ayuda IA', prompt: 'explicame de forma simple como mejorar mi prompt' },
   ];
 
   return (
     <div className={appContainerClassName} style={appContainerStyle}>
-      {isScanning && (
-        <div className="scanning-overlay">
-          <div className="scanning-grid"></div>
-          <div className="scanning-laser"></div>
-        </div>
-      )}
-      {isEncrypting && (
-        <div className="encryption-overlay">
-          <div className="encryption-shield"></div>
-          <div className="encryption-data-particles"></div>
-        </div>
-      )}
-
       {timerAlert && (
         <div className="timer-modal-overlay" onClick={() => setTimerAlert(null)}>
           <div className="timer-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -511,7 +455,7 @@ function App() {
         <div className="search-modal-overlay" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>
           <div className="search-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="search-modal-header">
-              <h3>{searchModalType === 'youtube' ? '🎥 Buscar en YouTube' : '🔍 Buscar en Google'}</h3>
+              <h3>{searchModalType === 'youtube' ? 'Buscar en YouTube' : 'Buscar en Google'}</h3>
               <button className="search-modal-close" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>✕</button>
             </div>
             
@@ -622,7 +566,7 @@ function App() {
         </div>
 
         <div className="sidebar-section">
-          <h3 className="section-title">Grupos de Intención</h3>
+          <h3 className="section-title">Modos del asistente</h3>
           <div className="intent-groups-list">
             {intentGroups
               .filter((group) => ['visualizar', 'automatizar', 'acciones_sistema'].includes(group.id))
@@ -636,13 +580,14 @@ function App() {
                   <span className="group-count">{group.keywords.length}</span>
                 </div>
                 <div className="group-keywords-preview">
-                  {group.keywords.slice(0, 6).map((keyword) => (
+                  <p className="group-description">{group.details.replace(/\*\*/g, '')}</p>
+                {group.keywords.slice(0, 2).map((keyword) => (
                     <span key={`${group.id}-${keyword}`} className="mini-tag">
                       {keyword}
                     </span>
                   ))}
-                  {group.keywords.length > 6 && (
-                    <span className="mini-tag more-tag">+{group.keywords.length - 6} más</span>
+                  {group.keywords.length > 2 && (
+                    <span className="mini-tag more-tag">+{group.keywords.length - 2} mas</span>
                   )}
                 </div>
               </div>
@@ -651,7 +596,7 @@ function App() {
         </div>
 
         <div className="sidebar-section">
-          <h3 className="section-title">Acciones Disponibles</h3>
+          <h3 className="section-title">Comandos rapidos</h3>
           <div className="actions-grid">
             {availableActions.map((action) => (
               <button
@@ -786,7 +731,7 @@ function App() {
             </button>
           </div>
           <p className="input-hint">
-            FlowBot detecta intenciones como: <em>visualizar, automatizar y acciones de sistema</em>
+            Comandos: <em>navegar</em>, <em>reproducir video</em>, <em>timer</em> y acciones de sistema.
           </p>
           </div>
         </div>

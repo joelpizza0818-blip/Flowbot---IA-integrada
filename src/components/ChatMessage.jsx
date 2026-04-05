@@ -91,22 +91,6 @@ const ACTION_CONFIG = {
     noQueryDescription: 'Puedes abrir Google para completar tu busqueda.',
     colorClass: 'action-google',
   },
-  background_search: {
-    iconName: 'informar',
-    title: 'Analisis interno',
-    noQueryTitle: 'Procesamiento completado',
-    btnLabel: null,
-    noQueryDescription: 'Consulta procesada internamente sin necesidad de abrir el navegador.',
-    colorClass: 'action-background',
-  },
-  confirm_action: {
-    iconName: 'seguridad',
-    title: 'Confirmacion requerida',
-    noQueryTitle: 'Confirmacion requerida',
-    btnLabel: null,
-    noQueryDescription: 'Esta accion requiere tu confirmacion antes de proceder.',
-    colorClass: 'action-confirm',
-  },
   toggle_fullscreen: {
     iconName: 'automatizar',
     title: 'Pantalla completa',
@@ -120,88 +104,48 @@ const ACTION_CONFIG = {
     title: 'Reiniciando',
     noQueryTitle: 'Reiniciando',
     btnLabel: null,
-    noQueryDescription: 'La página se recargará en unos instantes...',
+    noQueryDescription: 'La pagina se recargara en unos instantes...',
     colorClass: 'action-system',
   },
   toggle_sidebar: {
     iconName: 'automatizar',
     title: 'Interfaz',
-    noQueryTitle: 'Menú ajustado',
+    noQueryTitle: 'Menu ajustado',
     btnLabel: null,
     noQueryDescription: 'Minimizando/expandiendo la barra lateral...',
     colorClass: 'action-system',
   },
   print_page: {
     iconName: 'informar',
-    title: 'Impresión',
-    noQueryTitle: 'Preparando impresión',
+    title: 'Impresion',
+    noQueryTitle: 'Preparando impresion',
     btnLabel: null,
-    noQueryDescription: 'Abriendo el cuadro de diálogo de impresión...',
+    noQueryDescription: 'Abriendo el cuadro de dialogo de impresion...',
     colorClass: 'action-system',
   },
   scroll_top: {
     iconName: 'ayuda',
-    title: 'Navegación',
+    title: 'Navegacion',
     noQueryTitle: 'Hacia arriba',
     btnLabel: null,
-    noQueryDescription: 'Desplazando al inicio de la página...',
+    noQueryDescription: 'Desplazando al inicio de la pagina...',
     colorClass: 'action-system',
   },
   scroll_bottom: {
     iconName: 'ayuda',
-    title: 'Navegación',
+    title: 'Navegacion',
     noQueryTitle: 'Hacia abajo',
     btnLabel: null,
-    noQueryDescription: 'Desplazando al final de la conversación...',
+    noQueryDescription: 'Desplazando al final de la conversacion...',
     colorClass: 'action-system',
-  },
-  clear_chat: {
-    iconName: 'eliminar',
-    title: 'Limpieza',
-    noQueryTitle: 'Borrando historial',
-    btnLabel: null,
-    noQueryDescription: 'Vaciando la conversación y reiniciando el id de mensajes...',
-    colorClass: 'action-system',
-  },
-  system_scan: {
-    iconName: 'seguridad',
-    title: 'Análisis de Red',
-    noQueryTitle: 'Escaneo de Seguridad',
-    btnLabel: null,
-    noQueryDescription: 'Realizando búsqueda de amenazas y vulnerabilidades...',
-    colorClass: 'action-security',
-  },
-  data_encryption: {
-    iconName: 'seguridad',
-    title: 'Encriptado',
-    noQueryTitle: 'Cifrado de Datos',
-    btnLabel: null,
-    noQueryDescription: 'Protegiendo información sensible con algoritmos avanzados...',
-    colorClass: 'action-security',
-  },
-  create_routine: {
-    iconName: 'automatizar',
-    title: 'Nuevo Flujo',
-    noQueryTitle: 'Diseño de Rutina',
-    btnLabel: null,
-    noQueryDescription: 'Creando secuencia de tareas automatizadas...',
-    colorClass: 'action-automation',
   },
   set_timer: {
     iconName: 'automatizar',
-    title: 'Programación',
-    noQueryTitle: 'Temporizador Activo',
+    title: 'Programacion',
+    noQueryTitle: 'Temporizador activo',
     btnLabel: null,
     noQueryDescription: 'Configurando alerta y recordatorio en el sistema...',
     colorClass: 'action-automation',
-  },
-  generate_report: {
-    iconName: 'informar',
-    title: 'Reporte Sistema',
-    noQueryTitle: 'Generando Informe',
-    btnLabel: null,
-    noQueryDescription: 'Recopilando métricas y estadísticas de uso...',
-    colorClass: 'action-report',
   },
 };
 
@@ -242,14 +186,6 @@ function ActionCard({ action }) {
           <IntentIcon name="external" size={16} />
           {btnLabel}
         </a>
-      )}
-
-      {action.action === 'confirm_action' && (
-        <p className="search-action-helper">Esta accion es potencialmente destructiva. Confirma antes de proceder.</p>
-      )}
-
-      {action.action === 'background_search' && (
-        <p className="search-action-helper">Procesado internamente. No se abrio ninguna pestaña externa.</p>
       )}
     </div>
   );
@@ -299,16 +235,6 @@ export default function ChatMessage({ message, isLatest }) {
                 </div>
                 <p className="intent-response">{parseRichText(intent.response)}</p>
                 <p className="intent-details">{parseRichText(intent.details)}</p>
-                <div className="intent-keywords">
-                  <span className="keywords-label">Palabras detectadas:</span>
-                  <div className="keywords-list">
-                    {intent.matchedKeywords.map((keyword) => (
-                      <span key={`${intent.id}-${keyword}`} className="keyword-tag">
-                        {keyword}
-                      </span>
-                    ))}
-                  </div>
-                </div>
               </div>
             ))}
           </div>
