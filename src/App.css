@@ -3032,15 +3032,10 @@ body {
 .typing-text {
   position: relative;
   display: inline-block;
+  color: #10a37f;
   white-space: normal;
   word-wrap: break-word;
-  background: linear-gradient(90deg, #bfcbc5 0%, #bfcbc5 95%, #10a37f 95%, #10a37f 100%);
-  background-size: 101% 100%;
-  background-position: 0% 0%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: typing-reveal 3.5s ease-in-out infinite;
+  animation: typing-delete 10s ease-in-out infinite;
 }
 
 .typing-text::after {
@@ -3052,29 +3047,29 @@ body {
   width: 2px;
   height: 1.1em;
   background: #10a37f;
-  animation: typing-cursor 0.8s infinite;
+  animation: cursor-blink 0.8s infinite;
   border-radius: 1px;
 }
 
-@keyframes typing-reveal {
+@keyframes typing-delete {
   0% {
-    background-position: 0% 0%;
+    clip-path: inset(0 100% 0 0);
   }
-  45% {
-    background-position: 0% 0%;
+  40% {
+    clip-path: inset(0 0 0 0);
   }
   50% {
-    background-position: 100% 0%;
+    clip-path: inset(0 0 0 0);
   }
-  95% {
-    background-position: 100% 0%;
+  90% {
+    clip-path: inset(0 100% 0 0);
   }
   100% {
-    background-position: 0% 0%;
+    clip-path: inset(0 100% 0 0);
   }
 }
 
-@keyframes typing-cursor {
+@keyframes cursor-blink {
   0%, 49% {
     opacity: 1;
   }
