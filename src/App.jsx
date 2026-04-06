@@ -72,7 +72,7 @@ function App() {
   const appContainerClassName = [
     'app-container',
     viewportMetrics.isCompact ? 'is-mobile' : '',
-    isKeyboardVisible ? 'keyboard-visible' : '',
+    isComposerFocused && isKeyboardVisible ? 'keyboard-visible' : '',
     isComposerFocused ? 'composer-focused' : '',
   ]
     .filter(Boolean)

@@ -2786,8 +2786,8 @@ body {
 
 .messages-container-empty {
   display: flex;
-  align-items: flex-end;
-  padding-top: clamp(24px, 5vh, 56px);
+  align-items: center;
+  padding-top: clamp(24px, 2vh, 28px);
   padding-bottom: 8px;
   overflow: hidden;
 }
