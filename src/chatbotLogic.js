@@ -26,7 +26,9 @@ const CLIENT_MODELS = [
 ];
 
 function getProxyEndpoint() {
-  return PROXY_BASE_URL ? `${PROXY_BASE_URL}/api/flowbot-proxy` : '/api/flowbot-proxy';
+  if (!PROXY_BASE_URL) return '/api/flowbot-proxy';
+  if (PROXY_BASE_URL.endsWith('/api/flowbot-proxy')) return PROXY_BASE_URL;
+  return `${PROXY_BASE_URL}/api/flowbot-proxy`;
 }
 
 async function fetchJsonWithTimeout(url, options, timeoutMs) {

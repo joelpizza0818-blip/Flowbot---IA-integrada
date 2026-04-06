@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import cors from 'cors';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,61 +10,67 @@ const distDir = path.join(__dirname, 'dist');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
+
 const primaryApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
 const fallbackApiKey1 = process.env.GEMINI_API_KEY_FALLBACK || process.env.VITE_GEMINI_API_KEY_FALLBACK || 'AIzaSyBPByzeKroMfdB2BPfmmxe6gfT_p-yxI6w';
 const fallbackApiKey2 = process.env.GEMINI_API_KEY_FALLBACK_2 || process.env.VITE_GEMINI_API_KEY_FALLBACK_2 || 'AIzaSyBeY6mJ-Ci8O5c21YnwOHtSaPa-7MD2KKw';
 const apiKeys = primaryApiKey ? [primaryApiKey, fallbackApiKey1, fallbackApiKey2] : [fallbackApiKey1, fallbackApiKey2];
 const geminiApiKey = apiKeys[0] || '';
+
 const systemPrompt =
   process.env.FLOWBOT_SYSTEM_PROMPT ||
   process.env.VITE_SYSTEM_PROMPT ||
   'Eres FLOWBOT, una IA de tareas basicas. Responde de forma breve, usando Markdown y negritas para enfatizar puntos clave.';
-const modelCandidates = (process.env.GEMINI_MODELS ||
-  'gemini-3.1-pro-preview,gemini-3.1-flash-preview,gemini-3.1-flash-lite-preview,gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-flash-lite-latest,gemini-flash-latest')
+
+const modelCandidates = (
+  process.env.GEMINI_MODELS ||
+  'gemini-3.1-pro-preview,gemini-3.1-flash-preview,gemini-3.1-flash-lite-preview,gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-flash-lite-latest,gemini-flash-latest'
+)
   .split(',')
   .map((model) => model.trim())
   .filter(Boolean);
-const corsOrigins = (process.env.CORS_ORIGINS || '')
+
+// ── CORS ─────────────────────────────────────────────────────────────────────
+// Lee origenes extra desde env; siempre incluye el dev server de Vite.
+const envOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
-  .map((origin) => origin.trim())
+  .map((o) => o.trim())
   .filter(Boolean);
 
-function applyCorsHeaders(req, res) {
-  const requestOrigin = req.headers.origin;
-  if (!requestOrigin) return;
+const allowedOrigins = new Set([
+  'http://localhost:5173',   // Vite dev server (puerto por defecto)
+  'http://localhost:4173',   // Vite preview
+  ...envOrigins,
+]);
 
-  if (corsOrigins.includes('*') || corsOrigins.includes(requestOrigin)) {
-    res.setHeader('Access-Control-Allow-Origin', corsOrigins.includes('*') ? '*' : requestOrigin);
-    res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  }
-}
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Permite peticiones sin origin (curl, Postman, mismo servidor)
+      if (!origin || allowedOrigins.has(origin) || envOrigins.includes('*')) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origen no permitido → ${origin}`));
+      }
+    },
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type'],
+  }),
+);
+// ─────────────────────────────────────────────────────────────────────────────
 
 app.use(express.json({ limit: '1mb' }));
-app.use((req, res, next) => {
-  applyCorsHeaders(req, res);
-
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-
-  next();
-});
 app.use(express.static(distDir, { index: false }));
 
-app.get('/api/health', (req, res) => {
-  res.json({
-    ok: true,
-    aiAvailable: Boolean(geminiApiKey),
-    modelCandidates,
-  });
+// ── Health ────────────────────────────────────────────────────────────────────
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, aiAvailable: Boolean(geminiApiKey), modelCandidates });
 });
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function extractTextFromGemini(data) {
   const parts = data?.candidates?.[0]?.content?.parts;
   if (!Array.isArray(parts)) return '';
-
   return parts
     .map((part) => (typeof part?.text === 'string' ? part.text : ''))
     .join('')
@@ -79,25 +86,22 @@ async function requestGemini(model, userMessage, apiKey) {
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1024,
-        },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
       }),
     },
   );
-
   const data = await response.json().catch(() => ({}));
   return { response, data };
 }
 
+// ── Proxy endpoint ─────────────────────────────────────────────────────────────
 app.post('/api/flowbot-proxy', async (req, res) => {
-  const userMessage = typeof req.body?.userMessage === 'string' ? req.body.userMessage.trim() : '';
+  const userMessage =
+    typeof req.body?.userMessage === 'string' ? req.body.userMessage.trim() : '';
 
   if (!userMessage) {
     return res.status(400).json({ error: 'Debes enviar un mensaje para consultar el modelo.' });
   }
-
   if (!geminiApiKey) {
     return res.status(503).json({ error: 'La IA no esta configurada en el servidor.' });
   }
@@ -114,14 +118,9 @@ app.post('/api/flowbot-proxy', async (req, res) => {
 
           if (response.status === 401 || response.status === 403) {
             console.warn(`[FlowBot Proxy] API key rechazada (${apiKey.slice(0, 10)}...)`);
-            break; // Salta a la siguiente clave API
+            break; // Salta a la siguiente clave
           }
-
-          if ([400, 429, 500, 503].includes(response.status)) {
-            continue; // Intenta el siguiente modelo
-          }
-
-          continue;
+          continue; // Intenta el siguiente modelo
         }
 
         const finishReason = data?.candidates?.[0]?.finishReason;
@@ -152,10 +151,12 @@ app.post('/api/flowbot-proxy', async (req, res) => {
   });
 });
 
-app.get('*', (req, res) => {
+// ── SPA fallback ───────────────────────────────────────────────────────────────
+app.get('*', (_req, res) => {
   res.sendFile(path.join(distDir, 'index.html'));
 });
 
 app.listen(port, () => {
   console.log(`FlowBot server running on http://localhost:${port}`);
+  console.log(`CORS habilitado para: ${[...allowedOrigins].join(', ')}`);
 });
