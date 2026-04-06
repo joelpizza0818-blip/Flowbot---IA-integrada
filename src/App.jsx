@@ -687,7 +687,7 @@ function App() {
                     <div className="navbar-logo">
                       <FlowLogo size={32} />
                       <span className="navbar-title">FlowBot</span>
-                      <span className="navbar-badge">En desarrollo</span>
+                      <span className="navbar-badge">Asistente de desarrollo</span>
                     </div>
                   </div>
                   <div className="navbar-center">
@@ -719,7 +719,7 @@ function App() {
                     <h2 className="empty-state-title">Tu asistente de desarrollo web.</h2>
                     <div className="empty-state-description-container">
                       <p className="empty-state-description">
-                        <span className="typing-text">Pregunta, busca, automatiza y controla</span>
+                        <span className="typing-text">Pensado para responder tus dudas acerca del desarollo web.</span>
                       </p>
                     </div>
                   </div>
@@ -734,7 +734,7 @@ function App() {
                     <div className="hero-context-progress-fill" style={{ width: `${contextProgress}%` }} />
                   </div>
                   <div className="hero-context-copy">
-                    <strong>El mensaje actual siempre manda.</strong>
+                    <strong>(El contexto es la memoria de la conversacion.)</strong>
                     <span>El historial reciente solo entra cuando ayuda a continuar, resumir o ajustar.</span>
                   </div>
                 </div>
@@ -791,7 +791,7 @@ function App() {
               <textarea
               ref={inputRef}
               className="chat-input"
-              placeholder="Escribe tu mensaje aquí..."
+              placeholder="Preguntame lo que quieras..."
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={handleKeyDown}
@@ -817,7 +817,7 @@ function App() {
             </button>
           </div>
           <p className="input-hint">
-            Comandos: <em>navegar</em>, <em>reproducir video</em>, <em>timer</em> y acciones de sistema.
+            Web desarollada por:<em>Joel Berroa</em>
           </p>
           </div>
         </div>
