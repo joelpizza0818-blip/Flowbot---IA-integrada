@@ -3,6 +3,7 @@ import { buildRecentContextPrompt } from './contextPrompt';
 const AI_UNAVAILABLE_MESSAGE =
   'El modelo de IA no esta disponible en este momento. Intenta de nuevo en unos minutos.';
 
+  // filtro las keys y agrupo dentro de un array parra rotar facil
 const PRIMARY_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const FALLBACK_API_KEYS = [
   import.meta.env.VITE_GEMINI_API_KEY_FALLBACK || '',
@@ -20,7 +21,6 @@ const CLIENT_MODELS = [
   'gemini-2.5-flash-lite',
   'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
-  'gemini-flash-lite-latest',
   'gemini-flash-latest',
 ];
 

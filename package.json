@@ -8,6 +8,8 @@
     "dev:server": "node --watch server.js",
     "build": "vite build",
     "debug:context": "node debug-context.js",
+    "debug:server": "node --inspect server.js",
+    "debug.env": "node debug-env.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node server.js"
