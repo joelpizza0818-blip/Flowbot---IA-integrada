@@ -74,6 +74,7 @@ function parseRichText(text) {
     return <React.Fragment key={`text-block-${blockIdx}`}>{inlineParts}</React.Fragment>;
   });
 }
+
 const ACTION_CONFIG = {
   open_youtube: {
     iconName: 'visualizar',
@@ -85,10 +86,10 @@ const ACTION_CONFIG = {
   },
   open_search: {
     iconName: 'buscar',
-    title: 'Busqueda preparada',
+    title: 'Búsqueda preparada',
     noQueryTitle: 'Buscador listo',
     btnLabel: 'Buscar en Google',
-    noQueryDescription: 'Puedes abrir Google para completar tu busqueda.',
+    noQueryDescription: 'Puedes abrir Google para completar tu búsqueda.',
     colorClass: 'action-google',
   },
   toggle_fullscreen: {
@@ -104,44 +105,44 @@ const ACTION_CONFIG = {
     title: 'Reiniciando',
     noQueryTitle: 'Reiniciando',
     btnLabel: null,
-    noQueryDescription: 'La pagina se recargara en unos instantes...',
+    noQueryDescription: 'La página se recargará en unos instantes...',
     colorClass: 'action-system',
   },
   toggle_sidebar: {
     iconName: 'automatizar',
     title: 'Interfaz',
-    noQueryTitle: 'Menu ajustado',
+    noQueryTitle: 'Menú ajustado',
     btnLabel: null,
     noQueryDescription: 'Minimizando/expandiendo la barra lateral...',
     colorClass: 'action-system',
   },
   print_page: {
     iconName: 'informar',
-    title: 'Impresion',
-    noQueryTitle: 'Preparando impresion',
+    title: 'Impresión',
+    noQueryTitle: 'Preparando impresión',
     btnLabel: null,
-    noQueryDescription: 'Abriendo el cuadro de dialogo de impresion...',
+    noQueryDescription: 'Abriendo el cuadro de diálogo de impresión...',
     colorClass: 'action-system',
   },
   scroll_top: {
     iconName: 'ayuda',
-    title: 'Navegacion',
+    title: 'Navegación',
     noQueryTitle: 'Hacia arriba',
     btnLabel: null,
-    noQueryDescription: 'Desplazando al inicio de la pagina...',
+    noQueryDescription: 'Desplazando al inicio de la página...',
     colorClass: 'action-system',
   },
   scroll_bottom: {
     iconName: 'ayuda',
-    title: 'Navegacion',
+    title: 'Navegación',
     noQueryTitle: 'Hacia abajo',
     btnLabel: null,
-    noQueryDescription: 'Desplazando al final de la conversacion...',
+    noQueryDescription: 'Desplazando al final de la conversación...',
     colorClass: 'action-system',
   },
   set_timer: {
     iconName: 'automatizar',
-    title: 'Programacion',
+    title: 'Programación',
     noQueryTitle: 'Temporizador activo',
     btnLabel: null,
     noQueryDescription: 'Configurando alerta y recordatorio en el sistema...',

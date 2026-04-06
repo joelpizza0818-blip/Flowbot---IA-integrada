@@ -162,18 +162,20 @@ body {
 .sidebar {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-color);
+  background: linear-gradient(180deg, rgba(15, 15, 15, 0.95) 0%, rgba(14, 14, 14, 0.92) 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   z-index: 20;
   position: relative;
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: margin-left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease;
   margin-left: calc(-1 * var(--sidebar-width));
+  box-shadow: 0 0 0 rgba(16, 163, 127, 0);
 }
 
 .sidebar.sidebar-open {
   margin-left: 0;
+  box-shadow: 0 8px 48px rgba(16, 163, 127, 0.12), 4px 0 32px rgba(0, 0, 0, 0.4);
 }
 
 .sidebar-header {
@@ -630,7 +632,7 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 12px 28px;
+  padding: 20px 16px 32px;
   scrollbar-width: thin;
   scrollbar-color: var(--bg-surface) transparent;
   overscroll-behavior: contain;
@@ -661,7 +663,7 @@ body {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   width: 100%;
   overflow-x: hidden;
 }
@@ -1463,11 +1465,16 @@ body {
     margin-left: 0;
     transform: translateX(-100%);
     z-index: 100;
-    box-shadow: var(--shadow-lg);
+    box-shadow: none;
+    width: 100%;
+    max-width: 320px;
+    background: linear-gradient(180deg, rgba(13, 13, 13, 0.98) 0%, rgba(12, 12, 12, 0.95) 100%);
+    backdrop-filter: blur(10px);
   }
 
   .sidebar-open {
     transform: translateX(0);
+    box-shadow: 12px 0 48px rgba(0, 0, 0, 0.7), inset -2px 0 12px rgba(16, 163, 127, 0.08);
   }
 
   .sidebar-overlay {
@@ -1483,6 +1490,14 @@ body {
     max-width: 88%;
     word-break: break-word;
     overflow-wrap: break-word;
+  }
+
+  .messages-container {
+    padding: 12px 10px 24px;
+  }
+
+  .messages-inner {
+    gap: 12px;
   }
 
   .chat-header {
@@ -3017,7 +3032,8 @@ body {
 .typing-text {
   position: relative;
   display: inline-block;
-  white-space: nowrap;
+  white-space: normal;
+  word-wrap: break-word;
   background: linear-gradient(90deg, #bfcbc5 0%, #bfcbc5 95%, #10a37f 95%, #10a37f 100%);
   background-size: 101% 100%;
   background-position: 0% 0%;
