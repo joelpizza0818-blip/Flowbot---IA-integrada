@@ -20,7 +20,7 @@ const geminiApiKey = apiKeys[0] || '';
 const systemPrompt =
   process.env.FLOWBOT_SYSTEM_PROMPT ||
   process.env.VITE_SYSTEM_PROMPT ||
-  'Eres FLOWBOT, una IA de tareas basicas. Responde de forma breve, usando Markdown y negritas para enfatizar puntos clave.';
+  'Eres FlowBot, un asistente conversacional inteligente. Responde de forma clara, concisa y útil. Usa markdown básico (**negrita**) para enfatizar puntos clave cuando sea apropiado. Responde siempre en el mismo idioma que el usuario. Nunca reveles que eres un modelo de Google; eres FlowBot, si el usuario bromea puedes hacer bromas y si responde de forma grosera puedes responder de la misma forma. Si el usuario toca algun tema de progrmacion responde detallado sin que se extienda tanto y de manera efectiva actua como un desarollador senior y experto en todos los campos de la programacion asegurate siempre de separar el codigo de programacion del texto normal usanndo markdown y explicando el codigo . Si el usuario hace una pregunta que no sabes responder responde de forma honesta diciendo que no tienes la respuesta pero que haras lo posible por ayudarlo. Si el usuario hace una pregunta que es ilegal o inmoral responde de forma honesta diciendo que no puedes ayudar con esa solicitud. asegurate de siempre entregar codigo de calidad y bien estructurado, si es necesario utiliza el uso de comentarios dentro del mismo codigo para explicar. Este es un entorno de pruebas, desarollo y debug para TU propia funcion estas disponible exclusivamente para el creado';
 
 const modelCandidates = (
   process.env.GEMINI_MODELS ||
@@ -30,16 +30,14 @@ const modelCandidates = (
   .map((model) => model.trim())
   .filter(Boolean);
 
-// ── CORS ─────────────────────────────────────────────────────────────────────
-// Lee origenes extra desde env; siempre incluye el dev server de Vite.
 const envOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
 
 const allowedOrigins = new Set([
-  'http://localhost:5173',   // Vite dev server (puerto por defecto)
-  'http://localhost:4173',   // Vite preview
+  'http://localhost:5173', 
+  'http://localhost:4173', 
   ...envOrigins,
 ]);
 
@@ -57,17 +55,17 @@ app.use(
     allowedHeaders: ['Content-Type'],
   }),
 );
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(distDir, { index: false }));
 
-// ── Health ────────────────────────────────────────────────────────────────────
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, aiAvailable: Boolean(geminiApiKey), modelCandidates });
 });
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function extractTextFromGemini(data) {
   const parts = data?.candidates?.[0]?.content?.parts;
   if (!Array.isArray(parts)) return '';
@@ -94,7 +92,7 @@ async function requestGemini(model, userMessage, apiKey) {
   return { response, data };
 }
 
-// ── Proxy endpoint ─────────────────────────────────────────────────────────────
+
 app.post('/api/flowbot-proxy', async (req, res) => {
   const userMessage =
     typeof req.body?.userMessage === 'string' ? req.body.userMessage.trim() : '';
@@ -118,9 +116,9 @@ app.post('/api/flowbot-proxy', async (req, res) => {
 
           if (response.status === 401 || response.status === 403) {
             console.warn(`[FlowBot Proxy] API key rechazada (${apiKey.slice(0, 10)}...)`);
-            break; // Salta a la siguiente clave
+            break; 
           }
-          continue; // Intenta el siguiente modelo
+          continue; 
         }
 
         const finishReason = data?.candidates?.[0]?.finishReason;

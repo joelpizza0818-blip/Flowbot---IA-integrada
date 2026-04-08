@@ -48,7 +48,7 @@ const fallbacks = [
 console.log(`\n✅ ${fallbacks.length} claves fallback disponibles para el workflow`);
 
 // Simular lo que hace chatbotLogic.js
-console.log('\n🧪 Simulación de chatbotLogic.js:');
+console.log(' Simulación de chatbotLogic.js:');
 console.log('─'.repeat(60));
 
 const PRIMARY_API_KEY = envVars['VITE_GEMINI_API_KEY'] || '';
@@ -62,4 +62,4 @@ console.log(`✓ PRIMARY_API_KEY: ${PRIMARY_API_KEY.substring(0, 20)}...`);
 console.log(`✓ FALLBACK_API_KEYS: ${FALLBACK_API_KEYS.length} claves`);
 console.log(`✓ API_KEYS totales: ${API_KEYS.length} claves`);
 
-console.log('\n✨ Debug completado. El .env está listo para inyectar en el workflow.');
+console.log('Debug completado. El .env está listo para inyectar en el workflow.');
