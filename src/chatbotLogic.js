@@ -1,5 +1,5 @@
 import { buildRecentContextPrompt } from './contextPrompt';
-
+const ENABLE_LIVE_SEARCH=true
 const AI_UNAVAILABLE_MESSAGE =
   'El modelo de IA no esta disponible en este momento. Intenta de nuevo en unos minutos.';
 

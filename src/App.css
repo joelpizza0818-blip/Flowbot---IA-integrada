@@ -4333,9 +4333,6 @@ body {
 
 
 
-/* 🔥 ANIMACIONES FUERTES CYBERPUNK 2026 🔥 */
-
-/* 1. Particles REACTIVAS al scroll/mouse */
 .messages-container {
   --particle-intensity: 0.015;
 }
@@ -4532,3 +4529,659 @@ body::before {
 .intent-card:hover::before {
   opacity: 1;
 }  
+/* ============================================================
+   MEJORAS 2026 — PATCH v2
+   1. Glass shimmer sutil acorde al color del tema
+   2. Navbar floating island con animación al primer mensaje
+   3. Responsive mejorado para typing text en pantallas pequeñas
+   4. Syntax highlighting real para bloques de código
+   ============================================================ */
+
+
+/* ── 1. GLASS SHIMMER SUTIL (verde del tema) ─────────────────
+   Aplica a todos los elementos con glass: hero, input, chat-header,
+   intent-card, search-action-card, glass-panel
+   ─────────────────────────────────────────────────────────── */
+
+@keyframes glass-shimmer {
+  0% {
+    background-position: -200% center;
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.7;
+  }
+  80% {
+    opacity: 0.7;
+  }
+  100% {
+    background-position: 200% center;
+    opacity: 0;
+  }
+}
+
+@keyframes glass-pulse-glow {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 0 0 1px rgba(16, 163, 127, 0.06),
+      0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 0 0 1px rgba(16, 163, 127, 0.14),
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      0 0 28px rgba(16, 163, 127, 0.07);
+  }
+}
+
+/* Shimmer sweep en el hero glass */
+.empty-state-hero::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(16, 163, 127, 0.055) 48%,
+    rgba(115, 240, 201, 0.08) 52%,
+    transparent 70%
+  ) !important;
+  background-size: 200% 100% !important;
+  border-radius: inherit !important;
+  pointer-events: none !important;
+  animation: glass-shimmer 7s ease-in-out infinite !important;
+  z-index: 2 !important;
+}
+
+/* Shimmer sutil en el input wrapper */
+.input-wrapper::after,
+.input-wrapper-empty::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    100deg,
+    transparent 25%,
+    rgba(16, 163, 127, 0.045) 45%,
+    rgba(115, 240, 201, 0.065) 50%,
+    transparent 75%
+  );
+  background-size: 200% 100%;
+  pointer-events: none;
+  animation: glass-shimmer 9s ease-in-out infinite 2s;
+  z-index: 1;
+}
+
+/* Pulse glow en chat-header (la isla flotante) */
+.chat-header {
+  animation: glass-pulse-glow 5s ease-in-out infinite;
+}
+
+/* Shimmer en intent-card y search-action-card */
+.intent-card::after,
+.search-action-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgba(16, 163, 127, 0.035) 45%,
+    rgba(115, 240, 201, 0.05) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  pointer-events: none;
+  opacity: 0;
+  animation: glass-shimmer 11s ease-in-out infinite 3.5s;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+.intent-card:hover::after,
+.search-action-card:hover::after {
+  opacity: 1;
+}
+
+
+/* ── 2. NAVBAR — ISLA FLOTANTE CON ANIMACIÓN ─────────────────
+   Estado inicial: compacta / sin conversación
+   Estado activo (.navbar-active): se expande con la isla visible
+   ─────────────────────────────────────────────────────────── */
+
+/* La navbar del hero empieza como una banda plana */
+.empty-state-navbar {
+  /* Estado idle: sin isla, plano */
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  padding: 12px 16px 18px;
+  transition:
+    background 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
+    padding 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-radius 0.55s ease;
+  will-change: transform, box-shadow;
+}
+
+/* Estado ACTIVO: cuando el usuario ya envió el primer mensaje
+   Añade clase .navbar-active al elemento .empty-state-navbar desde JS */
+.empty-state-navbar.navbar-active {
+  background: rgba(14, 16, 18, 0.72);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border-color: rgba(16, 163, 127, 0.18);
+  border-radius: 24px;
+  padding: 14px 20px 14px;
+  box-shadow:
+    0 0 0 1px rgba(16, 163, 127, 0.08),
+    0 8px 32px rgba(0, 0, 0, 0.38),
+    0 0 64px rgba(16, 163, 127, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  transform: translateY(-2px);
+  animation: navbar-expand 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes navbar-expand {
+  0% {
+    opacity: 0.7;
+    transform: translateY(0px) scaleX(0.97);
+    background: rgba(14, 16, 18, 0.2);
+    border-color: rgba(16, 163, 127, 0.04);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px) scaleX(1.01);
+    border-color: rgba(16, 163, 127, 0.22);
+  }
+  70% {
+    transform: translateY(-1px) scaleX(1.0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-2px) scaleX(1);
+    border-color: rgba(16, 163, 127, 0.18);
+  }
+}
+
+/* Shimmer sweep sobre la isla navbar cuando se activa */
+.empty-state-navbar.navbar-active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(16, 163, 127, 0.06) 44%,
+    rgba(115, 240, 201, 0.09) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  pointer-events: none;
+  animation: glass-shimmer 6s ease-in-out 0.2s 1 forwards;
+  z-index: 0;
+}
+
+.empty-state-navbar {
+  position: relative;
+  overflow: visible; /* para que el shimmer no se corte */
+}
+
+/* Al volver al estado vacío (si el user borra chat) — inversa suave */
+.empty-state-navbar:not(.navbar-active) {
+  animation: navbar-collapse 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes navbar-collapse {
+  0% { transform: translateY(-2px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+
+/* ── 3. RESPONSIVE MEJORADO — TYPING TEXT EN PANTALLAS PEQUEÑAS ─
+   El texto de animación en el hero se cortaba.
+   Solución: contener el texto correctamente y ajustar tamaños.
+   ─────────────────────────────────────────────────────────── */
+
+/* Contenedor del typing text — contenido correcto */
+.empty-state-description-container {
+  display: block;
+  width: 100%;
+  max-width: 56ch;
+  min-height: auto;
+  overflow: visible;
+}
+
+/* El texto animado no debe hacer overflow */
+.typing-text {
+  display: inline;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* El cursor después del texto */
+.typing-text::after {
+  display: inline-block;
+  position: relative;
+  right: auto;
+  top: auto;
+  transform: none;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
+/* ≤ 480px — pantallas muy pequeñas */
+@media (max-width: 480px) {
+  .empty-state-hero {
+    padding: clamp(16px, 4vw, 24px) !important;
+    border-radius: 20px !important;
+  }
+
+  .empty-state-head {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .empty-state-logo-shell {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 14px !important;
+    display: flex !important;
+  }
+
+  .empty-state-title {
+    font-size: clamp(1.65rem, 8.5vw, 2.4rem) !important;
+    max-width: none !important;
+    line-height: 1.0 !important;
+    letter-spacing: -0.03em !important;
+  }
+
+  .empty-state-description {
+    font-size: 0.82rem !important;
+    line-height: 1.55 !important;
+    max-width: 100% !important;
+    margin-top: 10px !important;
+  }
+
+  .typing-text {
+    font-size: inherit;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .empty-state-description-container {
+    max-width: 100%;
+  }
+
+  .empty-state-kicker {
+    font-size: 0.6rem;
+    padding: 6px 10px;
+    gap: 6px;
+  }
+
+  .hero-context-band {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    margin-top: 16px;
+    padding: 12px 14px;
+  }
+
+  .messages-container-empty {
+    padding: 80px 12px 6px !important;
+  }
+
+  .messages-inner-empty {
+    max-width: calc(100vw - 24px) !important;
+    gap: 14px !important;
+  }
+
+  .empty-state-navbar {
+    padding: 10px 0 14px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .navbar-center {
+    display: none;
+  }
+
+  .navbar-right {
+    gap: 8px;
+  }
+
+  .input-wrapper-empty {
+    min-height: 72px !important;
+    padding: 12px 14px 10px !important;
+    border-radius: 20px !important;
+  }
+
+  .composer-dock-empty {
+    padding: 0 12px !important;
+  }
+
+  .quick-actions-empty {
+    gap: 6px;
+    padding-top: 8px;
+    justify-content: flex-start;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  .quick-actions-empty::-webkit-scrollbar {
+    display: none;
+  }
+
+  .quick-actions-empty .quick-action-btn {
+    flex-shrink: 0;
+    font-size: 0.73rem;
+    padding: 7px 13px;
+  }
+}
+
+/* ≤ 360px — pantallas muy muy pequeñas */
+@media (max-width: 360px) {
+  .empty-state-title {
+    font-size: clamp(1.45rem, 8vw, 1.9rem) !important;
+  }
+
+  .empty-state-head {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .empty-state-logo-shell {
+    width: 42px !important;
+    height: 42px !important;
+  }
+}
+
+/* ≤ 768px — forzar que el typing-text sea inline block con contenedor flex */
+@media (max-width: 768px) {
+  .empty-state-description-container {
+    max-width: 100%;
+    min-height: auto;
+  }
+
+  .typing-text {
+    display: inline;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .typing-text::after {
+    width: 1.5px;
+    height: 0.9em;
+    vertical-align: -0.05em;
+    margin-left: 1px;
+    right: auto;
+  }
+}
+
+
+/* ── 4. SYNTAX HIGHLIGHTING REAL PARA CÓDIGO ─────────────────
+   Clases que el React/JS parser debe inyectar al renderizar código.
+   Si se usa dangerouslySetInnerHTML o un parser propio, envolver
+   tokens con <span class="tok-keyword">, etc.
+   También se definen los colores de Prism/Highlight.js override.
+   ─────────────────────────────────────────────────────────── */
+
+/* Header de lenguaje en el bloque de código */
+.code-lang-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.code-lang-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(115, 240, 201, 0.75);
+  user-select: none;
+}
+
+/* Redefinición del bloque base */
+.code-block {
+  background-color: #111214 !important;
+  color: #c9d1d9 !important;
+  padding: 14px 16px 14px !important;
+  tab-size: 2;
+}
+
+.code-block-wrapper {
+  background-color: #111214 !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+/* ─── TOKENS DE SINTAXIS ─────────────────────────────────── */
+
+/* Palabras clave: if, else, return, const, let, var, function, class, etc. */
+.tok-keyword,
+.code-block .keyword,
+.hljs-keyword,
+.token.keyword,
+.prism-keyword {
+  color: #ff79c6 !important;
+  font-style: normal;
+  font-weight: 500;
+}
+
+/* Strings: "hola", 'mundo', `template` */
+.tok-string,
+.tok-string-special,
+.code-block .string,
+.hljs-string,
+.token.string,
+.prism-string {
+  color: #f1fa8c !important;
+}
+
+/* Números: 42, 3.14, 0xFF */
+.tok-number,
+.code-block .number,
+.hljs-number,
+.token.number,
+.prism-number {
+  color: #bd93f9 !important;
+}
+
+/* Funciones / nombres de función */
+.tok-function,
+.tok-function-variable,
+.code-block .function,
+.hljs-title.function_,
+.token.function,
+.prism-function {
+  color: #50fa7b !important;
+  font-weight: 500;
+}
+
+/* Comentarios: // línea o /* bloque *\/ */
+.tok-comment,
+.tok-comment-block,
+.tok-comment-line,
+.code-block .comment,
+.hljs-comment,
+.token.comment,
+.prism-comment {
+  color: #6272a4 !important;
+  font-style: italic;
+  opacity: 0.88;
+}
+
+/* Operadores: =, +, -, *, /, ===, =>, etc. */
+.tok-operator,
+.tok-punctuation,
+.code-block .operator,
+.hljs-operator,
+.token.operator,
+.token.punctuation,
+.prism-operator {
+  color: #ff79c6 !important;
+}
+
+/* Tipos, clases, interfaces en TS */
+.tok-type,
+.tok-class-name,
+.code-block .class-name,
+.hljs-type,
+.hljs-title.class_,
+.token.class-name {
+  color: #8be9fd !important;
+  font-weight: 500;
+}
+
+/* Variables, identificadores */
+.tok-variable,
+.code-block .variable,
+.hljs-variable,
+.token.variable {
+  color: #f8f8f2 !important;
+}
+
+/* Atributos HTML/JSX */
+.tok-attr,
+.tok-attribute,
+.code-block .attr,
+.hljs-attr,
+.hljs-attribute,
+.token.attr-name {
+  color: #8be9fd !important;
+}
+
+/* Tags HTML/JSX */
+.tok-tag,
+.code-block .tag,
+.hljs-tag,
+.token.tag {
+  color: #ff79c6 !important;
+}
+
+/* Valores de atributos HTML */
+.tok-attr-value,
+.code-block .attr-value,
+.hljs-string.attr-value,
+.token.attr-value {
+  color: #f1fa8c !important;
+}
+
+/* Built-ins: console, Math, Array, etc. */
+.tok-builtin,
+.code-block .built_in,
+.hljs-built_in,
+.token.builtin {
+  color: #50fa7b !important;
+}
+
+/* Booleanos y null */
+.tok-bool,
+.tok-literal,
+.code-block .literal,
+.hljs-literal,
+.token.boolean,
+.token.null {
+  color: #bd93f9 !important;
+}
+
+/* Imports/exports */
+.tok-import,
+.tok-module,
+.hljs-meta {
+  color: #ff79c6 !important;
+}
+
+/* Decoradores (@) */
+.tok-decorator,
+.hljs-meta.string {
+  color: #ffd700 !important;
+  font-style: italic;
+}
+
+/* Reglas CSS: property: value */
+.tok-property,
+.hljs-attribute,
+.token.property {
+  color: #8be9fd !important;
+}
+
+/* CSS values */
+.tok-unit,
+.tok-value,
+.hljs-number,
+.token.unit {
+  color: #bd93f9 !important;
+}
+
+/* Pseudo-clases CSS :hover, ::before */
+.tok-pseudo,
+.hljs-selector-pseudo {
+  color: #50fa7b !important;
+}
+
+/* Selectores CSS */
+.hljs-selector-tag,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: #ff79c6 !important;
+}
+
+/* ─── ESTILOS GENERALES DEL BLOQUE ─────────────────────────── */
+
+/* Separación visual entre comentarios y código cercano */
+.token.comment + .token,
+.tok-comment + * {
+  margin-left: 0; /* no margin, solo el color diferencia */
+}
+
+/* Line numbers opcionales */
+.code-line-number {
+  display: inline-block;
+  min-width: 2.5em;
+  padding-right: 1em;
+  color: rgba(255, 255, 255, 0.2);
+  user-select: none;
+  text-align: right;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  margin-right: 1em;
+  font-size: 0.8em;
+}
+
+.code-block pre:hover .code-line:hover,
+.code-block code .code-line:hover {
+  background: rgba(16, 163, 127, 0.04);
+  border-radius: 3px;
+}
+
+
+.inline-code {
+  background-color: rgba(16, 163, 127, 0.08) !important;
+  border: 1px solid rgba(16, 163, 127, 0.2) !important;
+  color: #73f0c9 !important;
+  border-radius: 5px;
+  padding: 2px 7px !important;
+  font-size: 0.84em !important;
+}
+
+
+.hljs {
+  background: transparent !important;
+  color: #c9d1d9 !important;
+}
+
