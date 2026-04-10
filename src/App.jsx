@@ -9,6 +9,7 @@ import {
   availableActions,
   THINKING_MODES,
   MODEL_GROUPS,
+  getModelFamilyName,
 } from './chatbotLogic';
 import { CONTEXT_WINDOW_SIZE, getContextUsage } from './contextPrompt';
 import './App.css';
@@ -70,6 +71,20 @@ function ThinkingModeIcon({ mode, size = 16 }) {
 
 function ModelIcon({ group, size = 16 }) {
   const svgProps = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' };
+  if (group === 'openrouter') return (
+    <svg {...svgProps}>
+      <path d="M12 2 20 7v10l-8 5-8-5V7l8-5z" />
+      <path d="M8 12h8" />
+      <path d="M12 8v8" />
+    </svg>
+  );
+  if (group === 'groq') return (
+    <svg {...svgProps}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 4v16" />
+      <path d="M4 12h16" />
+    </svg>
+  );
   if (group === 'gemini-3.1') return (
     <svg {...svgProps}>
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
@@ -81,7 +96,6 @@ function ModelIcon({ group, size = 16 }) {
       <path d="M12 12v10M8 16l4 4 4-4"/>
     </svg>
   );
-  // auto
   return (
     <svg {...svgProps}>
       <path d="M12 3a9 9 0 1 0 0 18A9 9 0 0 0 12 3z"/>
@@ -89,6 +103,12 @@ function ModelIcon({ group, size = 16 }) {
       <path d="M12 3a9 9 0 0 1 0 18"/>
     </svg>
   );
+}
+
+function getModelOptionLabel(key, val) {
+  if (key === 'auto') return val.label;
+  if (key === 'gemini-3.1' || key === 'gemini-2.5') return val.label;
+  return val.models.map((model) => getModelFamilyName(model)).join(' / ');
 }
 
 // ── App ────────────────────────────────────────────────────────────────────────
@@ -110,7 +130,6 @@ function App() {
   const [timerModalOpen, setTimerModalOpen]   = useState(false);
   const [timerModalValue, setTimerModalValue] = useState('');
 
-  // ── NEW: thinking mode & model preference ────────────────────────────────────
   const [thinkingMode, setThinkingMode]       = useState('normal');
   const [preferredModel, setPreferredModel]   = useState('auto');
   const [modeDropdownOpen, setModeDropdownOpen]   = useState(false);
@@ -173,7 +192,6 @@ function App() {
     return () => window.removeEventListener('keydown', handler);
   }, [timerAlert]);
 
-  // Close dropdowns on outside click
   useEffect(() => {
     const handler = () => { setModeDropdownOpen(false); setModelDropdownOpen(false); };
     if (modeDropdownOpen || modelDropdownOpen) document.addEventListener('click', handler);
@@ -194,7 +212,7 @@ function App() {
 
     (async () => {
       const response    = await generateBotResponse(trimmed, recentConversation, preferredModel, thinkingMode);
-      const isOffline   = response.text?.includes('no esta disponible') || response.text?.includes('intenta más tarde');
+      const isOffline   = Boolean(response.error) || response.source === 'proxy-error' || response.text?.includes('no esta disponible') || response.text?.includes('intenta más tarde');
       setIsAIOnline(!isOffline);
 
       const botMsg = {
@@ -417,8 +435,8 @@ function App() {
                 <button key={key} className={`sidebar-mode-btn ${preferredModel === key ? 'sidebar-mode-active' : ''}`} onClick={() => { setPreferredModel(key); if (viewportMetrics.isCompact) setSidebarOpen(false); }}>
                   <ModelIcon group={key} size={18} />
                   <div className="sidebar-mode-info">
-                    <span className="sidebar-mode-label">{val.label}</span>
-                    <span className="sidebar-mode-desc">{key === 'auto' ? 'Cascada automática' : `Prioriza ${val.label} con fallback automático`}</span>
+                    <span className="sidebar-mode-label">{getModelOptionLabel(key, val)}</span>
+                    <span className="sidebar-mode-desc">{key === 'auto' ? 'Cascada automática' : `Modelos: ${val.models.map((model) => getModelFamilyName(model)).join(', ')}`}</span>
                   </div>
                 </button>
               ))}
@@ -617,9 +635,7 @@ function App() {
           </div>
 
           <div className={`input-area ${isEmptyState ? 'input-area-empty' : ''}`}>
-            {/* ── Mode & Model selectors ────────────────────────────────────── */}
             <div className="input-selectors">
-              {/* Thinking mode dropdown */}
               <div className="selector-wrapper">
                 <button
                   className={`selector-btn ${thinkingMode !== 'normal' ? 'selector-btn-active' : ''}`}
@@ -648,7 +664,6 @@ function App() {
                 )}
               </div>
 
-              {/* Model dropdown */}
               <div className="selector-wrapper">
                 <button
                   className={`selector-btn ${preferredModel !== 'auto' ? 'selector-btn-active' : ''}`}
@@ -667,8 +682,8 @@ function App() {
                       <button key={key} className={`dropdown-option ${preferredModel === key ? 'dropdown-option-active' : ''}`} onClick={() => { setPreferredModel(key); setModelDropdownOpen(false); }}>
                         <ModelIcon group={key} size={15} />
                         <div className="dropdown-option-text">
-                          <span className="dropdown-option-label">{val.label}</span>
-                          <span className="dropdown-option-desc">{key === 'auto' ? 'Cascada automática' : `Prioriza ${val.label}`}</span>
+                          <span className="dropdown-option-label">{getModelOptionLabel(key, val)}</span>
+                          <span className="dropdown-option-desc">{key === 'auto' ? 'Cascada automática' : `Modelos: ${val.models.map((model) => getModelFamilyName(model)).join(', ')}`}</span>
                         </div>
                         {preferredModel === key && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
                       </button>
