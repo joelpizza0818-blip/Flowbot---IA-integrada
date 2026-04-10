@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
+import FlowLogo from './FlowLogo';
 import IntentIcon from './IntentIcon';
 
-// ── Code block ─────────────────────────────────────────────────────────────────
 function CodeBlock({ code }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
@@ -25,7 +25,6 @@ function CodeBlock({ code }) {
   );
 }
 
-// ── Rich text parser ───────────────────────────────────────────────────────────
 function parseRichText(text) {
   const blockParts = text.split(/(```[\s\S]*?```)/g).map((part, idx) => {
     if (idx % 2 === 1) return { type: 'code-block', content: part.replace(/^```|```$/g, '') };
@@ -49,7 +48,6 @@ function parseRichText(text) {
   });
 }
 
-// ── Action card config ─────────────────────────────────────────────────────────
 const ACTION_CONFIG = {
   open_youtube:     { iconName: 'visualizar', title: 'Video encontrado',   noQueryTitle: 'YouTube listo',  btnLabel: 'Abrir en YouTube', noQueryDescription: 'Puedes abrir YouTube para buscar el video que necesitas.', colorClass: 'action-youtube' },
   open_search:      { iconName: 'buscar',     title: 'Búsqueda preparada', noQueryTitle: 'Buscador listo', btnLabel: 'Buscar en Google', noQueryDescription: 'Puedes abrir Google para completar tu búsqueda.',            colorClass: 'action-google'  },
@@ -90,10 +88,8 @@ function ActionCard({ action }) {
   );
 }
 
-// ── Thinking mode badge ────────────────────────────────────────────────────────
 const MODE_LABELS = { deep: 'Profundo', short: 'Conciso', normal: null };
 
-// ── Main component ─────────────────────────────────────────────────────────────
 export default function ChatMessage({ message, isLatest }) {
   const isUser = message.sender === 'user';
 
@@ -101,13 +97,7 @@ export default function ChatMessage({ message, isLatest }) {
     <div className={`chat-message ${isUser ? 'user-message' : 'bot-message'} ${isLatest ? 'message-enter' : ''}`}>
       {!isUser && (
         <div className="bot-avatar">
-          <svg width="24" height="24" viewBox="0 0 100 100" fill="none">
-            <path d="M 50 15 C 30 15, 20 35, 25 55 C 20 70, 30 85, 50 85 C 70 85, 80 70, 75 55 C 80 35, 70 15, 50 15 Z" stroke="#ffffff" strokeWidth="4" strokeLinecap="round"/>
-            <path d="M 23 45 C 5 35, 10 65, 26 65 M 77 45 C 95 35, 90 65, 74 65" stroke="#ffffff" strokeWidth="4" strokeLinecap="round"/>
-            <path d="M 35 20 C 30 5, 20 10, 25 25 M 65 20 C 70 5, 80 10, 75 25" stroke="#ffffff" strokeWidth="4" strokeLinecap="round"/>
-            <circle cx="42" cy="40" r="3" fill="#00ff00"/>
-            <circle cx="58" cy="40" r="3" fill="#00ff00"/>
-          </svg>
+          <FlowLogo size={24} />
         </div>
       )}
 
@@ -145,7 +135,7 @@ export default function ChatMessage({ message, isLatest }) {
           </div>
         )}
 
-        {/* ── Fallback notice ──────────────────────────────────────────────── */}
+        
         {!isUser && message.fallbackReason && (
           <div className="message-fallback-notice">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -157,7 +147,7 @@ export default function ChatMessage({ message, isLatest }) {
           </div>
         )}
 
-        {/* ── Model + mode metadata ────────────────────────────────────────── */}
+        
         {!isUser && message.model && (
           <div className="message-model-info">
             <span className="model-dot"></span>

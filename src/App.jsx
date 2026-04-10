@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import FlowLogo from './components/FlowLogo';
 import BackgroundLogo from './components/BackgroundLogo';
 import ChatMessage from './components/ChatMessage';
@@ -127,7 +127,7 @@ function App() {
   const { usedSlots: usedContextSlots } = getContextUsage(visibleMessages);
   const contextProgress     = (usedContextSlots / CONTEXT_WINDOW_SIZE) * 100;
 
-  const appContainerClassName = ['app-container', viewportMetrics.isCompact ? 'is-mobile' : '', isComposerFocused && isKeyboardVisible ? 'keyboard-visible' : '', isComposerFocused ? 'composer-focused' : ''].filter(Boolean).join(' ');
+  const appContainerClassName = ['app-container', viewportMetrics.isCompact ? 'is-mobile' : '', isComposerFocused && isKeyboardVisible ? 'keyboard-visible' : '', isComposerFocused ? 'composer-focused' : '', sidebarOpen ? 'sidebar-open-state' : ''].filter(Boolean).join(' ');
   const appContainerStyle     = { '--app-height': `${viewportMetrics.viewportHeight}px`, '--keyboard-offset': `${viewportMetrics.keyboardOffset}px` };
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
@@ -382,67 +382,95 @@ function App() {
           </button>
         </div>
 
-        <div className="sidebar-section">
-          <h3 className="section-title">Modos de IA</h3>
-          <div className="sidebar-mode-list">
-            {Object.values(THINKING_MODES).map((mode) => (
-              <button key={mode.id} className={`sidebar-mode-btn ${thinkingMode === mode.id ? 'sidebar-mode-active' : ''}`} onClick={() => { setThinkingMode(mode.id); if (viewportMetrics.isCompact) setSidebarOpen(false); }}>
-                <ThinkingModeIcon mode={mode.id} size={18} />
-                <div className="sidebar-mode-info">
-                  <span className="sidebar-mode-label">{mode.label}</span>
-                  <span className="sidebar-mode-desc">{mode.desc}</span>
-                </div>
-              </button>
-            ))}
+        <details className="sidebar-section" name="sidebar-menu" open>
+          <summary className="sidebar-section-summary">
+            <span>Modos de IA</span>
+            <svg className="sidebar-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </summary>
+          <div className="sidebar-section-body">
+            <div className="sidebar-mode-list">
+              {Object.values(THINKING_MODES).map((mode) => (
+                <button key={mode.id} className={`sidebar-mode-btn ${thinkingMode === mode.id ? 'sidebar-mode-active' : ''}`} onClick={() => { setThinkingMode(mode.id); if (viewportMetrics.isCompact) setSidebarOpen(false); }}>
+                  <ThinkingModeIcon mode={mode.id} size={18} />
+                  <div className="sidebar-mode-info">
+                    <span className="sidebar-mode-label">{mode.label}</span>
+                    <span className="sidebar-mode-desc">{mode.desc}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </details>
 
-        <div className="sidebar-section">
-          <h3 className="section-title">Modelo preferido</h3>
-          <div className="sidebar-mode-list">
-            {Object.entries(MODEL_GROUPS).map(([key, val]) => (
-              <button key={key} className={`sidebar-mode-btn ${preferredModel === key ? 'sidebar-mode-active' : ''}`} onClick={() => { setPreferredModel(key); if (viewportMetrics.isCompact) setSidebarOpen(false); }}>
-                <ModelIcon group={key} size={18} />
-                <div className="sidebar-mode-info">
-                  <span className="sidebar-mode-label">{val.label}</span>
-                  <span className="sidebar-mode-desc">{key === 'auto' ? 'Cascada automática' : `Prefiere ${val.label} → fallback automático`}</span>
-                </div>
-              </button>
-            ))}
+        <details className="sidebar-section" name="sidebar-menu">
+          <summary className="sidebar-section-summary">
+            <span>Modelo preferido</span>
+            <svg className="sidebar-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </summary>
+          <div className="sidebar-section-body">
+            <div className="sidebar-mode-list">
+              {Object.entries(MODEL_GROUPS).map(([key, val]) => (
+                <button key={key} className={`sidebar-mode-btn ${preferredModel === key ? 'sidebar-mode-active' : ''}`} onClick={() => { setPreferredModel(key); if (viewportMetrics.isCompact) setSidebarOpen(false); }}>
+                  <ModelIcon group={key} size={18} />
+                  <div className="sidebar-mode-info">
+                    <span className="sidebar-mode-label">{val.label}</span>
+                    <span className="sidebar-mode-desc">{key === 'auto' ? 'Cascada automática' : `Prioriza ${val.label} con fallback automático`}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </details>
 
-        <div className="sidebar-section">
-          <h3 className="section-title">Grupos de intención</h3>
-          <div className="intent-groups-list">
-            {intentGroups.filter((g) => ['visualizar','automatizar','acciones_sistema'].includes(g.id)).map((group) => (
-              <div key={group.id} className="sidebar-group" style={{ '--group-color': group.color }}>
-                <div className="group-header">
-                  <span className="group-icon"><IntentIcon name={group.iconName} size={18} /></span>
-                  <span className="group-name">{group.name}</span>
-                  <span className="group-count">{group.keywords.length}</span>
+        <details className="sidebar-section" name="sidebar-menu">
+          <summary className="sidebar-section-summary">
+            <span>Grupos de intención</span>
+            <svg className="sidebar-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </summary>
+          <div className="sidebar-section-body">
+            <div className="intent-groups-list">
+              {intentGroups.filter((g) => ['visualizar','automatizar','acciones_sistema'].includes(g.id)).map((group) => (
+                <div key={group.id} className="sidebar-group" style={{ '--group-color': group.color }}>
+                  <div className="group-header">
+                    <span className="group-icon"><IntentIcon name={group.iconName} size={18} /></span>
+                    <span className="group-name">{group.name}</span>
+                    <span className="group-count">{group.keywords.length}</span>
+                  </div>
+                  <div className="group-keywords-preview">
+                    <p className="group-description">{group.details.replace(/\*\*/g, '')}</p>
+                    {group.keywords.slice(0, 2).map((kw) => <span key={`${group.id}-${kw}`} className="mini-tag">{kw}</span>)}
+                    {group.keywords.length > 2 && <span className="mini-tag more-tag">+{group.keywords.length - 2} mas</span>}
+                  </div>
                 </div>
-                <div className="group-keywords-preview">
-                  <p className="group-description">{group.details.replace(/\*\*/g, '')}</p>
-                  {group.keywords.slice(0, 2).map((kw) => <span key={`${group.id}-${kw}`} className="mini-tag">{kw}</span>)}
-                  {group.keywords.length > 2 && <span className="mini-tag more-tag">+{group.keywords.length - 2} mas</span>}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        </details>
 
-        <div className="sidebar-section">
-          <h3 className="section-title">Comandos rapidos</h3>
-          <div className="actions-grid">
-            {availableActions.map((action) => (
-              <button key={action.id} className="action-btn" onClick={() => handleActionClick(action.id)} title={action.label}>
-                <span className="action-icon">{getActionSvg(action.id)}</span>
-                <span className="action-label">{action.label}</span>
-              </button>
-            ))}
+        <details className="sidebar-section" name="sidebar-menu">
+          <summary className="sidebar-section-summary">
+            <span>Comandos rápidos</span>
+            <svg className="sidebar-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </summary>
+          <div className="sidebar-section-body">
+            <div className="actions-grid">
+              {availableActions.map((action) => (
+                <button key={action.id} className="action-btn" onClick={() => handleActionClick(action.id)} title={action.label}>
+                  <span className="action-icon">{getActionSvg(action.id)}</span>
+                  <span className="action-label">{action.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </details>
 
         <div className="sidebar-footer">
           <button className="clear-chat-btn" onClick={handleClearChat}>
@@ -640,7 +668,7 @@ function App() {
                         <ModelIcon group={key} size={15} />
                         <div className="dropdown-option-text">
                           <span className="dropdown-option-label">{val.label}</span>
-                          <span className="dropdown-option-desc">{key === 'auto' ? 'Cascada automática' : `Prefiere ${val.label}`}</span>
+                          <span className="dropdown-option-desc">{key === 'auto' ? 'Cascada automática' : `Prioriza ${val.label}`}</span>
                         </div>
                         {preferredModel === key && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
                       </button>
@@ -676,7 +704,7 @@ function App() {
                 </svg>
               </button>
             </div>
-            <p className="input-hint">Web desarollada por: <em>Joel Berroa</em></p>
+            <p className="input-hint">Web desarrollada por: <em>Joel Berroa</em></p>
           </div>
         </div>
       </main>

@@ -34,7 +34,6 @@ export default function FlowLogo({ size = 48, animated = true }) {
         </filter>
       </defs>
 
-      {/* Dragon Body & Head (Tux shape) */}
       <path
         d="M 50 15 
            C 30 15, 20 35, 25 55 
@@ -49,7 +48,6 @@ export default function FlowLogo({ size = 48, animated = true }) {
         className="dragon-body"
       />
 
-      {/* Dragon Wings */}
       <path
         d="M 23 45 C 5 35, 10 65, 26 65 M 77 45 C 95 35, 90 65, 74 65"
         stroke="#ffffff"
@@ -60,7 +58,6 @@ export default function FlowLogo({ size = 48, animated = true }) {
         className="dragon-wings"
       />
 
-      {/* Dragon Horns */}
       <path
         d="M 35 20 C 30 5, 20 10, 25 25 M 65 20 C 70 5, 80 10, 75 25"
         stroke="#ffffff"
@@ -71,7 +68,6 @@ export default function FlowLogo({ size = 48, animated = true }) {
         className="dragon-horns"
       />
 
-      {/* Eyes */}
       <circle cx="42" cy="40" r="2.5" fill="#00ff00" filter="url(#neonGlow)">
         {animated && (
           <animate
@@ -93,7 +89,6 @@ export default function FlowLogo({ size = 48, animated = true }) {
         )}
       </circle>
 
-      {/* Flow particles */}
       {animated && (
         <>
           <circle r="1.5" fill="#00ff00" opacity="0.8">
