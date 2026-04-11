@@ -8,12 +8,6 @@ const GEMINI_API_KEYS = [
   import.meta.env.VITE_GEMINI_API_KEY_FALLBACK_2 || '',
 ].filter(Boolean);
 
-const OPENROUTER_API_KEYS = [
-  import.meta.env.VITE_OPENROUTER_API_KEY || '',
-  import.meta.env.VITE_OPENROUTER_API_KEY_FALLBACK || '',
-  import.meta.env.VITE_OPENROUTER_API_KEY_FALLBACK_2 || '',
-].filter(Boolean);
-
 const GROQ_API_KEYS = [
   import.meta.env.VITE_GROQ_API_KEY || '',
   import.meta.env.VITE_GROQ_API_KEY_FALLBACK || '',
@@ -22,7 +16,6 @@ const GROQ_API_KEYS = [
 
 const PROVIDER_KEYS = {
   gemini: GEMINI_API_KEYS,
-  openrouter: OPENROUTER_API_KEYS,
   groq: GROQ_API_KEYS,
 };
 
@@ -61,14 +54,12 @@ export function buildSystemPromptForMode(thinkingMode = 'normal') {
 const GEMINI_31_MODELS = ['gemini-3.1-pro-preview', 'gemini-3.1-flash-preview', 'gemini-3.1-flash-lite-preview'];
 const GEMINI_25_MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 const GEMINI_20_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest'];
-const OPENROUTER_MODELS = ['openai/gpt-5.2', 'anthropic/claude-sonnet-4.5', 'google/gemini-3.1-pro-preview'];
 const GROQ_MODELS = ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b'];
 
 export const MODEL_GROUPS = {
-  auto: { label: 'Auto', models: [...GEMINI_31_MODELS, ...GEMINI_25_MODELS, ...GEMINI_20_MODELS, ...OPENROUTER_MODELS, ...GROQ_MODELS] },
+  auto: { label: 'Auto', models: [...GEMINI_31_MODELS, ...GEMINI_25_MODELS, ...GEMINI_20_MODELS, ...GROQ_MODELS] },
   'gemini-3.1': { label: 'Gemini 3.1', models: [...GEMINI_31_MODELS, ...GEMINI_25_MODELS, ...GEMINI_20_MODELS] },
   'gemini-2.5': { label: 'Gemini 2.5', models: [...GEMINI_25_MODELS, ...GEMINI_31_MODELS, ...GEMINI_20_MODELS] },
-  openrouter: { label: 'GPT / Claude / Gemini', models: [...OPENROUTER_MODELS] },
   groq: { label: 'GPT OSS / Llama', models: [...GROQ_MODELS] },
 };
 
@@ -76,9 +67,6 @@ function getModelFamilyName(model) {
   if (GEMINI_31_MODELS.includes(model)) return 'Gemini 3.1';
   if (GEMINI_25_MODELS.includes(model)) return 'Gemini 2.5';
   if (GEMINI_20_MODELS.includes(model)) return 'Gemini 2.0';
-  if (model === 'openai/gpt-5.2') return 'GPT 5.2';
-  if (model === 'anthropic/claude-sonnet-4.5') return 'Claude Sonnet 4.5';
-  if (model === 'google/gemini-3.1-pro-preview') return 'Gemini 3.1 Pro';
   if (model === 'openai/gpt-oss-120b') return 'GPT OSS 120B';
   if (model === 'llama-3.3-70b-versatile') return 'Llama 3.3 70B';
   if (model === 'openai/gpt-oss-20b') return 'GPT OSS 20B';
@@ -95,10 +83,10 @@ function getFriendlyProxyError(data, response) {
   const hint = meta.hint || data?.detail || data?.error || response?.statusText || 'Error desconocido';
 
   if (status === 401 || status === 403) {
-    return 'La clave configurada no es valida o no tiene permisos para OpenRouter/Groq. Revisa la API key.';
+    return 'La clave configurada no es valida o no tiene permisos para el proveedor. Revisa la API key.';
   }
   if (status === 402) {
-    return 'OpenRouter indica que no hay creditos suficientes en la cuenta.';
+    return 'El proveedor indica que no hay creditos suficientes en la cuenta.';
   }
   if (status === 404) {
     return `El modelo solicitado no esta disponible. Probo ${model} en ${provider}.`;
@@ -161,14 +149,31 @@ function extractOpenAiText(data) {
   return '';
 }
 
+function getOpenAiEmbeddedError(data) {
+  if (typeof data?.error?.message === 'string' && data.error.message.trim()) {
+    return data.error.message.trim();
+  }
+
+  const choice = data?.choices?.[0];
+  if (!choice) return '';
+
+  if (choice.finish_reason === 'error') {
+    return (
+      choice?.message?.content ||
+      choice?.delta?.content ||
+      choice?.error?.message ||
+      choice?.native_finish_reason ||
+      'El proveedor devolvio un error durante la generacion.'
+    ).toString().trim();
+  }
+
+  return '';
+}
+
 function buildOpenAiHeaders(apiKey) {
-  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173';
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${apiKey}`,
-    'HTTP-Referer': origin,
-    'X-Title': 'FlowBot',
-    'X-OpenRouter-Title': 'FlowBot',
   };
 }
 
@@ -204,12 +209,8 @@ async function fetchProviderModel(provider, model, userMessage, systemPrompt, ap
     return { response, data, text: extractGeminiText(data) };
   }
 
-  const endpoint = provider === 'openrouter'
-    ? 'https://openrouter.ai/api/v1/chat/completions'
-    : 'https://api.groq.com/openai/v1/chat/completions';
-
   const { response, data } = await fetchJsonWithTimeout(
-    endpoint,
+    'https://api.groq.com/openai/v1/chat/completions',
     {
       method: 'POST',
       headers: buildOpenAiHeaders(apiKey),
@@ -218,7 +219,12 @@ async function fetchProviderModel(provider, model, userMessage, systemPrompt, ap
     12000,
   );
 
-  return { response, data, text: extractOpenAiText(data) };
+  return {
+    response,
+    data,
+    text: extractOpenAiText(data),
+    embeddedError: getOpenAiEmbeddedError(data),
+  };
 }
 
 async function fetchProxyResponse(userMessage, preferredModel = 'auto', thinkingMode = 'normal') {
@@ -281,13 +287,12 @@ function getModelCandidates(preferredGroup = 'auto') {
       ...GEMINI_31_MODELS.map((model) => ({ provider: 'gemini', model })),
       ...GEMINI_25_MODELS.map((model) => ({ provider: 'gemini', model })),
       ...GEMINI_20_MODELS.map((model) => ({ provider: 'gemini', model })),
-      ...OPENROUTER_MODELS.map((model) => ({ provider: 'openrouter', model })),
       ...GROQ_MODELS.map((model) => ({ provider: 'groq', model })),
     ];
   }
 
   const groupModels = MODEL_GROUPS[preferredGroup]?.models || MODEL_GROUPS.auto.models;
-  const provider = preferredGroup === 'openrouter' || preferredGroup === 'groq' ? preferredGroup : 'gemini';
+  const provider = preferredGroup === 'groq' ? 'groq' : 'gemini';
   return groupModels.map((model) => ({ provider, model }));
 }
 
@@ -300,12 +305,13 @@ async function fetchDirectResponse(userMessage, preferredModel = 'auto', thinkin
     for (let index = 0; index < apiKeys.length; index += 1) {
       const apiKey = apiKeys[index];
       try {
-        const { response, data, text } = await fetchProviderModel(provider, model, userMessage, systemPrompt, apiKey);
+        const { response, data, text, embeddedError } = await fetchProviderModel(provider, model, userMessage, systemPrompt, apiKey);
 
-        if (!response.ok) {
-          const tag = response.status === 429 ? '(cuota agotada)' : `(status ${response.status})`;
+        if (!response.ok || embeddedError) {
+          const status = response.ok ? (data?.error?.code || 502) : response.status;
+          const tag = status === 429 ? '(cuota agotada)' : `(status ${status})`;
           console.warn(`[FlowBot AI] ${provider}/${model} key ${index + 1} ${tag} -> probando siguiente...`);
-          if (response.status === 429) await new Promise((resolve) => setTimeout(resolve, 1000));
+          if (status === 429) await new Promise((resolve) => setTimeout(resolve, 1000));
           continue;
         }
 

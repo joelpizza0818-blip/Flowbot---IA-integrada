@@ -20,15 +20,6 @@ const GEMINI_API_KEYS = [
   process.env.VITE_GEMINI_API_KEY_FALLBACK_2 || '',
 ].filter(Boolean);
 
-const OPENROUTER_API_KEYS = [
-  process.env.OPENROUTER_API_KEY || '',
-  process.env.VITE_OPENROUTER_API_KEY || '',
-  process.env.OPENROUTER_API_KEY_FALLBACK || '',
-  process.env.VITE_OPENROUTER_API_KEY_FALLBACK || '',
-  process.env.OPENROUTER_API_KEY_FALLBACK_2 || '',
-  process.env.VITE_OPENROUTER_API_KEY_FALLBACK_2 || '',
-].filter(Boolean);
-
 const GROQ_API_KEYS = [
   process.env.GROQ_API_KEY || '',
   process.env.VITE_GROQ_API_KEY || '',
@@ -40,7 +31,6 @@ const GROQ_API_KEYS = [
 
 const PROVIDER_KEYS = {
   gemini: GEMINI_API_KEYS,
-  openrouter: OPENROUTER_API_KEYS,
   groq: GROQ_API_KEYS,
 };
 
@@ -58,14 +48,12 @@ const BASE_SYSTEM_PROMPT =
 const GEMINI_31_MODELS = ['gemini-3.1-pro-preview', 'gemini-3.1-flash-preview', 'gemini-3.1-flash-lite-preview'];
 const GEMINI_25_MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 const GEMINI_20_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest'];
-const OPENROUTER_MODELS = ['openai/gpt-5.2', 'anthropic/claude-sonnet-4.5', 'google/gemini-3.1-pro-preview'];
 const GROQ_MODELS = ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b'];
 
 const MODEL_GROUPS = {
-  auto: [...GEMINI_31_MODELS, ...GEMINI_25_MODELS, ...GEMINI_20_MODELS, ...OPENROUTER_MODELS, ...GROQ_MODELS],
+  auto: [...GEMINI_31_MODELS, ...GEMINI_25_MODELS, ...GEMINI_20_MODELS, ...GROQ_MODELS],
   'gemini-3.1': [...GEMINI_31_MODELS, ...GEMINI_25_MODELS, ...GEMINI_20_MODELS],
   'gemini-2.5': [...GEMINI_25_MODELS, ...GEMINI_31_MODELS, ...GEMINI_20_MODELS],
-  openrouter: [...OPENROUTER_MODELS],
   groq: [...GROQ_MODELS],
 };
 
@@ -112,18 +100,31 @@ function extractOpenAiText(data) {
   return '';
 }
 
-function buildOpenAiHeaders(apiKey) {
-  const origin =
-    process.env.OPENROUTER_HTTP_REFERER ||
-    process.env.CORS_ORIGINS?.split(',').map((value) => value.trim()).find(Boolean) ||
-    'http://localhost:5173';
+function getOpenAiEmbeddedError(data) {
+  if (typeof data?.error?.message === 'string' && data.error.message.trim()) {
+    return data.error.message.trim();
+  }
 
+  const choice = data?.choices?.[0];
+  if (!choice) return '';
+
+  if (choice.finish_reason === 'error') {
+    return (
+      choice?.message?.content ||
+      choice?.delta?.content ||
+      choice?.error?.message ||
+      choice?.native_finish_reason ||
+      'El proveedor devolvio un error durante la generacion.'
+    ).toString().trim();
+  }
+
+  return '';
+}
+
+function buildOpenAiHeaders(apiKey) {
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${apiKey}`,
-    'HTTP-Referer': origin,
-    'X-Title': 'FlowBot',
-    'X-OpenRouter-Title': 'FlowBot',
   };
 }
 
@@ -157,17 +158,18 @@ async function requestProvider(provider, model, userMessage, apiKey, systemPromp
     return { response, data, text: extractGeminiText(data) };
   }
 
-  const endpoint = provider === 'openrouter'
-    ? 'https://openrouter.ai/api/v1/chat/completions'
-    : 'https://api.groq.com/openai/v1/chat/completions';
-
-  const response = await fetch(endpoint, {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: buildOpenAiHeaders(apiKey),
     body: JSON.stringify(buildOpenAiBody(model, systemPrompt, userMessage)),
   });
   const data = await response.json().catch(() => ({}));
-  return { response, data, text: extractOpenAiText(data) };
+  return {
+    response,
+    data,
+    text: extractOpenAiText(data),
+    embeddedError: getOpenAiEmbeddedError(data),
+  };
 }
 
 function getCandidates(preferredModel = 'auto') {
@@ -176,7 +178,6 @@ function getCandidates(preferredModel = 'auto') {
 
 function getProviderForModel(model) {
   if (GEMINI_31_MODELS.includes(model) || GEMINI_25_MODELS.includes(model) || GEMINI_20_MODELS.includes(model)) return 'gemini';
-  if (OPENROUTER_MODELS.includes(model)) return 'openrouter';
   if (GROQ_MODELS.includes(model)) return 'groq';
   return 'unknown';
 }
@@ -185,9 +186,6 @@ function getModelFamilyName(model) {
   if (GEMINI_31_MODELS.includes(model)) return 'Gemini 3.1';
   if (GEMINI_25_MODELS.includes(model)) return 'Gemini 2.5';
   if (GEMINI_20_MODELS.includes(model)) return 'Gemini 2.0';
-  if (model === 'openai/gpt-5.2') return 'GPT 5.2';
-  if (model === 'anthropic/claude-sonnet-4.5') return 'Claude Sonnet 4.5';
-  if (model === 'google/gemini-3.1-pro-preview') return 'Gemini 3.1 Pro';
   if (model === 'openai/gpt-oss-120b') return 'GPT OSS 120B';
   if (model === 'llama-3.3-70b-versatile') return 'Llama 3.3 70B';
   if (model === 'openai/gpt-oss-20b') return 'GPT OSS 20B';
@@ -201,24 +199,6 @@ function getProviderErrorHint(provider, status, data) {
     : typeof apiError?.message === 'string'
       ? apiError.message
       : '';
-
-  if (provider === 'openrouter') {
-    if (status === 401 || status === 403) {
-      return 'La clave de OpenRouter parece invalida, revocada o sin permiso para este modelo.';
-    }
-    if (status === 402) {
-      return 'La cuenta de OpenRouter no tiene creditos suficientes.';
-    }
-    if (status === 404) {
-      return 'El modelo solicitado no existe o ya no esta disponible en OpenRouter.';
-    }
-    if (status === 429) {
-      return 'OpenRouter esta limitando la tasa de peticiones. Espera un momento y prueba otra vez.';
-    }
-    if (status >= 500) {
-      return 'OpenRouter tuvo un problema temporal con el proveedor de este modelo.';
-    }
-  }
 
   if (provider === 'groq') {
     if (status === 401 || status === 403) return 'La clave de Groq parece invalida o sin permisos.';
@@ -242,7 +222,6 @@ app.get('/api/health', (_req, res) => {
     ok: true,
     providers: {
       gemini: Boolean(GEMINI_API_KEYS.length),
-      openrouter: Boolean(OPENROUTER_API_KEYS.length),
       groq: Boolean(GROQ_API_KEYS.length),
     },
   });
@@ -267,23 +246,24 @@ app.post('/api/flowbot-proxy', async (req, res) => {
     for (let index = 0; index < apiKeys.length; index += 1) {
       const apiKey = apiKeys[index];
       try {
-        const { response, data, text } = await requestProvider(provider, model, userMessage, apiKey, systemPrompt);
+        const { response, data, text, embeddedError } = await requestProvider(provider, model, userMessage, apiKey, systemPrompt);
 
-        if (!response.ok) {
-          const hint = getProviderErrorHint(provider, response.status, data);
+        if (!response.ok || embeddedError) {
+          const status = response.ok ? (data?.error?.code || 502) : response.status;
+          const hint = embeddedError || getProviderErrorHint(provider, status, data);
           lastError = hint;
           lastErrorMeta = {
             provider,
             model,
             apiKeyIndex: index + 1,
-            status: response.status,
+            status,
             error: data?.error || null,
             raw: data || null,
             hint,
           };
-          console.warn(`[FlowBot Proxy] ${provider}/${model} key ${index + 1} -> ${response.status}: ${hint}`);
-          if (response.status === 401 || response.status === 403) break;
-          if (response.status === 429) await new Promise((resolve) => setTimeout(resolve, 1000));
+          console.warn(`[FlowBot Proxy] ${provider}/${model} key ${index + 1} -> ${status}: ${hint}`);
+          if (status === 401 || status === 403) break;
+          if (status === 429) await new Promise((resolve) => setTimeout(resolve, 1000));
           continue;
         }
 

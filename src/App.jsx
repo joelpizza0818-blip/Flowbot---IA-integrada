@@ -71,13 +71,6 @@ function ThinkingModeIcon({ mode, size = 16 }) {
 
 function ModelIcon({ group, size = 16 }) {
   const svgProps = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' };
-  if (group === 'openrouter') return (
-    <svg {...svgProps}>
-      <path d="M12 2 20 7v10l-8 5-8-5V7l8-5z" />
-      <path d="M8 12h8" />
-      <path d="M12 8v8" />
-    </svg>
-  );
   if (group === 'groq') return (
     <svg {...svgProps}>
       <circle cx="12" cy="12" r="8" />
