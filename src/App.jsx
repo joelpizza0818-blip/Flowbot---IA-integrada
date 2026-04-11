@@ -643,7 +643,7 @@ function App() {
                 <div className="hero-live-row">
                   <div className="empty-state-kicker">
                     <span className="empty-state-kicker-dot"></span>
-                    Menos setup. Mas shipping.
+                    Desarolla y crea mas rapido
                   </div>
                   <span className={`hero-live-pill ${isAIOnline ? 'is-online' : 'is-offline'}`}>
                     {isAIOnline ? 'Servicio online' : 'Modo fallback'}
