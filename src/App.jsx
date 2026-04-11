@@ -123,8 +123,10 @@ function App() {
   const inputRef              = useRef(null);
   const nextId                = useRef(1);
   const islandDragStateRef    = useRef(null);
+  const wasCompactRef         = useRef(null);
 
   const isKeyboardVisible   = viewportMetrics.isCompact && viewportMetrics.keyboardOffset > 0;
+  const isCompactViewport   = viewportMetrics.isCompact;
   const visibleMessages     = messages.filter((m) => m.id !== 0);
   const isEmptyState        = visibleMessages.length === 0;
   const { usedSlots: usedContextSlots } = getContextUsage(visibleMessages);
@@ -133,6 +135,12 @@ function App() {
 
   const appContainerClassName = ['app-container', viewportMetrics.isCompact ? 'is-mobile' : 'is-desktop', isComposerFocused && isKeyboardVisible ? 'keyboard-visible' : '', isComposerFocused ? 'composer-focused' : '', sidebarOpen ? 'sidebar-open-state' : ''].filter(Boolean).join(' ');
   const appContainerStyle     = { '--app-height': `${viewportMetrics.viewportHeight}px`, '--keyboard-offset': `${viewportMetrics.keyboardOffset}px` };
+
+  function clampIslandX(nextX) {
+    const min = 72;
+    const max = Math.max(min, window.innerWidth - 72);
+    return Math.min(Math.max(nextX, min), max);
+  }
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
   useEffect(() => { if (navigationUrl) window.location.href = navigationUrl; }, [navigationUrl]);
@@ -149,6 +157,14 @@ function App() {
       setViewportMetrics(nextMetrics);
       setIslandX((current) => clampIslandX(current));
       if (nextMetrics.isCompact) setSidebarOpen(false);
+
+      // When entering mobile layout, start the island centered but still draggable.
+      // Avoid doing this on every resize to keep the user's chosen position.
+      if (wasCompactRef.current === null) wasCompactRef.current = nextMetrics.isCompact;
+      if (!wasCompactRef.current && nextMetrics.isCompact) {
+        setIslandX(clampIslandX(Math.round(window.innerWidth / 2)));
+      }
+      wasCompactRef.current = nextMetrics.isCompact;
     };
     const vv = window.visualViewport;
     vv?.addEventListener('resize', update);
@@ -249,12 +265,6 @@ function App() {
 
   function handleClearChat() { setMessages([createWelcomeMessage()]); nextId.current = 1; setIslandOpen(false); }
 
-  function clampIslandX(nextX) {
-    const min = 72;
-    const max = Math.max(min, window.innerWidth - 72);
-    return Math.min(Math.max(nextX, min), max);
-  }
-
   function handleIslandPointerDown(e) {
     if (islandOpen) return;
     islandDragStateRef.current = {
@@ -262,6 +272,7 @@ function App() {
       startX: e.clientX,
       originX: islandX,
       moved: false,
+      threshold: e.pointerType === 'touch' ? 12 : 4,
     };
     e.currentTarget.setPointerCapture?.(e.pointerId);
   }
@@ -270,7 +281,7 @@ function App() {
     const dragState = islandDragStateRef.current;
     if (!dragState || dragState.pointerId !== e.pointerId || islandOpen) return;
     const delta = e.clientX - dragState.startX;
-    if (Math.abs(delta) > 4) dragState.moved = true;
+    if (Math.abs(delta) > dragState.threshold) dragState.moved = true;
     setIslandX(clampIslandX(dragState.originX + delta));
   }
 
@@ -341,21 +352,25 @@ function App() {
   const quickActions = [
     {
       label: 'Codigo',
+      mobileLabel: 'UI',
       hint: 'Componentes y UI',
       prompt: 'Crea un navbar responsive en React con menu movil accesible y estados claros.',
     },
     {
       label: 'Aprender',
+      mobileLabel: 'Explicar',
       hint: 'Explicado paso a paso',
       prompt: 'Explicame este concepto de React como si estuviera empezando y dame un ejemplo practico.',
     },
     {
       label: 'Debug',
+      mobileLabel: 'Bug',
       hint: 'Errores y fixes',
       prompt: 'Ayudame a depurar este error de React. Explica la causa raiz y propon una solucion limpia.',
     },
     {
       label: 'Optimizar',
+      mobileLabel: 'Mejorar',
       hint: 'Rendimiento y limpieza',
       prompt: 'Optimiza este componente para rendimiento y claridad sin cambiar su comportamiento.',
     },
@@ -387,6 +402,16 @@ function App() {
       : displayedContextSlots < CONTEXT_WINDOW_SIZE * 0.55
         ? 'Memoria aprendiendo el contexto actual'
         : 'Memoria lista para conversaciones largas';
+  const heroDescription = isCompactViewport
+    ? 'Pide una feature, pega un bug o aterriza una idea en codigo listo para iterar.'
+    : 'Pidele una feature, pega un bug o aterriza una idea en codigo listo para iterar. Todo desde un chat pensado para productos web reales.';
+  const composerStatusLabel = isTyping ? 'Respondiendo' : (isCompactViewport ? 'Nueva consulta' : 'Listo para colaborar');
+  const composerStatusDescription = isTyping
+    ? 'FlowBot esta preparando una respuesta.'
+    : 'Pega codigo, describe el bug o pide la feature completa.';
+  const composerHint = isCompactViewport
+    ? 'Atajos rapidos arriba. Enter para enviar.'
+    : 'Ejemplos utiles: "Crea un navbar responsive en React", "Explicame este error", "Optimiza este componente".';
 
   return (
     <div className={appContainerClassName} style={appContainerStyle}>
@@ -631,7 +656,7 @@ function App() {
                     <h2 className="empty-state-title">Construye mas rapido. Depura con contexto. Aprende mientras envias.</h2>
                     <div className="empty-state-description-container">
                       <p className="empty-state-description">
-                        Pidele una feature, pega un bug o aterriza una idea en codigo listo para iterar. Todo desde un chat pensado para productos web reales.
+                        {heroDescription}
                       </p>
                     </div>
                   </div>
@@ -660,7 +685,7 @@ function App() {
                       <span className="hero-feature-badge">{activeModelOption.label}</span>
                     </div>
                     <strong>{activeModelOption.label}</strong>
-                    <p>{activeModelOption.desc}</p>
+                    <p>{isCompactViewport ? 'Preferencia activa para responder.' : activeModelOption.desc}</p>
                   </article>
                 </div>
               </section>
@@ -689,21 +714,66 @@ function App() {
           <div className="composer-shell">
             <div className={`quick-actions ${isComposerFocused && viewportMetrics.isCompact ? 'quick-actions-hidden' : ''} ${isEmptyState ? 'quick-actions-empty' : ''} ${hasConversation ? 'quick-actions-compact' : ''}`}>
               {quickActions.map((action) => (
-                <button key={action.label} className="quick-action-btn" onClick={() => { setInput(action.prompt); inputRef.current?.focus(); }}>
-                  <span className="quick-action-title">{action.label}</span>
-                  <span className="quick-action-description">{action.hint}</span>
+                <button key={action.label} className="quick-action-btn" onClick={() => { setInput(action.prompt); inputRef.current?.focus(); }} title={action.prompt}>
+                  <span className="quick-action-copy">
+                    <span className="quick-action-title">{isCompactViewport ? action.mobileLabel || action.label : action.label}</span>
+                    {!isCompactViewport && <span className="quick-action-description">{action.hint}</span>}
+                  </span>
+                  <span className="quick-action-arrow" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14" />
+                      <path d="m13 5 7 7-7 7" />
+                    </svg>
+                  </span>
                 </button>
               ))}
             </div>
 
             <div className={`input-area ${isEmptyState ? 'input-area-empty' : ''} ${hasConversation ? 'input-area-compact' : ''}`}>
               <div className={`composer-topline ${hasConversation ? 'composer-topline-compact' : ''}`}>
-                <span className={`composer-status-badge ${isTyping ? 'is-busy' : ''}`}>
-                  {isTyping ? 'Generando respuesta' : 'Listo para usar'}
-                </span>
-                <p className="composer-status-copy">
-                  {isTyping ? 'FlowBot esta preparando una respuesta.' : 'Pega codigo, describe el bug o pide la feature completa.'}
-                </p>
+                <div className="composer-status-stack">
+                  <span className={`composer-status-badge ${isTyping ? 'is-busy' : ''}`}>
+                    {composerStatusLabel}
+                  </span>
+                  {!isCompactViewport && (
+                    <p className="composer-status-copy">
+                      {composerStatusDescription}
+                    </p>
+                  )}
+                </div>
+                <div className="composer-top-meta">
+                  <span className="composer-inline-pill">{activeModelOption.label}</span>
+                  {!isCompactViewport && <span className={`composer-inline-pill ${memoryPreviewEnabled ? '' : 'is-muted'}`}>Memoria {displayedContextSlots}/{CONTEXT_WINDOW_SIZE}</span>}
+                  <span className="composer-inline-pill">{isAIOnline ? 'Servicio activo' : 'Modo fallback'}</span>
+                </div>
+              </div>
+
+              <div className={`input-wrapper ${isEmptyState ? 'input-wrapper-empty' : ''} ${isTyping ? 'input-wrapper-loading' : ''}`}>
+                <textarea
+                  ref={inputRef}
+                  className="chat-input"
+                  placeholder={composerPlaceholder}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onFocus={handleComposerFocus}
+                  onBlur={handleComposerBlur}
+                  rows={1}
+                  enterKeyHint="send"
+                  autoComplete="off"
+                  aria-label="Escribe tu mensaje"
+                />
+                <button
+                  className={`send-btn ${input.trim() ? 'send-btn-active' : ''}`}
+                  onClick={handleSend}
+                  disabled={!input.trim()}
+                  aria-label="Enviar mensaje"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22,2 15,22 11,13 2,9" />
+                  </svg>
+                </button>
               </div>
 
               <div className="input-selectors">
@@ -771,43 +841,10 @@ function App() {
                 </div>
               </div>
 
-              <div className={`input-wrapper ${isEmptyState ? 'input-wrapper-empty' : ''} ${isTyping ? 'input-wrapper-loading' : ''}`}>
-                <textarea
-                  ref={inputRef}
-                  className="chat-input"
-                  placeholder={composerPlaceholder}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onFocus={handleComposerFocus}
-                  onBlur={handleComposerBlur}
-                  rows={1}
-                  enterKeyHint="send"
-                  autoComplete="off"
-                  aria-label="Escribe tu mensaje"
-                />
-                <button
-                  className={`send-btn ${input.trim() ? 'send-btn-active' : ''}`}
-                  onClick={handleSend}
-                  disabled={!input.trim()}
-                  aria-label="Enviar mensaje"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22,2 15,22 11,13 2,9" />
-                  </svg>
-                </button>
-              </div>
-
               <div className={`composer-footer ${hasConversation ? 'composer-footer-compact' : ''}`}>
                 <p className="input-hint">
-                  Ejemplos utiles: "Crea un navbar responsive en React", "Explicame este error", "Optimiza este componente".
+                  {composerHint}
                 </p>
-                <div className="composer-footer-meta">
-                  <span className="composer-inline-pill">{activeModelOption.label}</span>
-                  <span className={`composer-inline-pill ${memoryPreviewEnabled ? '' : 'is-muted'}`}>Memoria {displayedContextSlots}/{CONTEXT_WINDOW_SIZE}</span>
-                  <span className="composer-inline-pill">{isAIOnline ? 'Servicio activo' : 'Modo fallback'}</span>
-                </div>
               </div>
             </div>
           </div>
