@@ -86,10 +86,9 @@ codex-automation-report.md
 # =========================
 *.tsbuildinfo
 
-
-debug-context.js
-debug-env.js
-ninja.html
+# Antigravity
+.antigravity/
+.antigravity-cache/
 
 # =========================
 # Optional: lock files (solo si trabajas en equipo NO borres esto)

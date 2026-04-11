@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Ultra Ninja Pergamino Mejorado</title>
+<style>
+  body {
+    margin:0;
+    background:#f5f0e1;
+    overflow:hidden;
+    font-family:'Yu Mincho', serif;
+  }
+  canvas{
+    display:block;
+    margin:0 auto;
+    border:10px solid #000;
+    box-shadow:0 0 30px rgba(0,0,0,0.5);
+    background:#f5f0e1;
+  }
+  #ui{
+    position:absolute;
+    top:20px;
+    width:100%;
+    text-align:center;
+    color:#000;
+    font-size:20px;
+  }
+</style>
+</head>
+<body>
+<div id="ui">Nivel 1 - Score: 0</div>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let gameState='playing', level=1, score=0, frame=0;
+
+// Fondo animado tipo pergamino con manchas de tinta
+const inkSpots = Array.from({length:8},()=>({x:Math.random()*800, y:Math.random()*400, r:20+Math.random()*30, speed:Math.random()*0.5+0.1}));
+function drawBackground(){
+  ctx.fillStyle='#f5f0e1';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  inkSpots.forEach(spot=>{
+    ctx.fillStyle='rgba(0,0,0,0.05)';
+    ctx.beginPath();
+    ctx.arc(spot.x,spot.y,spot.r,0,Math.PI*2);
+    ctx.fill();
+    // animación suave
+    spot.x += Math.sin(frame*0.01+spot.speed);
+    spot.y += Math.cos(frame*0.01+spot.speed);
+  });
+};
+
+// Ninja humanoide animado
+const ninja = {
+  x:50, y:300, width:30, height:50, dy:0, gravity:1, jumpPower:-15, color:'#000',
+  frameAnim:0
+};
+
+// Obstáculos
+let obstacles=[];
+function spawnObstacle(){
+  const type=Math.floor(Math.random()*3); // 0=shuriken,1=barril,2=espina
+  let size = type===0?20:type===1?30:15;
+  let y = type===2?340:300-size;
+  obstacles.push({x:canvas.width, y:y, width:size, height:size, type:type, angle:0});
+}
+
+// Shuriken del ninja
+let shurikens=[];
+function shootShuriken(){ shurikens.push({x:ninja.x+ninja.width, y:ninja.y+20, width:10, height:10, dx:8}); }
+
+// Controles
+const keys={};
+document.addEventListener('keydown', e=>{ keys[e.code]=true; if(e.code==='KeyZ') shootShuriken(); });
+document.addEventListener('keyup', e=>keys[e.code]=false);
+
+// Dibujar ninja humanoide
+function drawNinja(){
+  ninja.frameAnim+=0.2;
+  const walkOffset = Math.sin(ninja.frameAnim)*5;
+
+  // sombra
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(ninja.x+ninja.width/2+5, ninja.y+ninja.height-5, 15, 5, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // torso
+  ctx.fillStyle=ninja.color;
+  ctx.beginPath();
+  ctx.ellipse(ninja.x+ninja.width/2, ninja.y+ninja.height/2, 10, 25, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // cabeza
+  ctx.beginPath();
+  ctx.arc(ninja.x+ninja.width/2, ninja.y+10, 10, 0, Math.PI*2);
+  ctx.fill();
+
+  // piernas animadas
+  ctx.strokeStyle='#000';
+  ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.moveTo(ninja.x+ninja.width/2-7, ninja.y+ninja.height/2+15+walkOffset);
+  ctx.lineTo(ninja.x+ninja.width/2-7, ninja.y+ninja.height);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(ninja.x+ninja.width/2+7, ninja.y+ninja.height/2-5+walkOffset);
+  ctx.lineTo(ninja.x+ninja.width/2+7, ninja.y+ninja.height);
+  ctx.stroke();
+
+  // brazos
+  ctx.beginPath();
+  ctx.moveTo(ninja.x+ninja.width/2-10, ninja.y+15);
+  ctx.lineTo(ninja.x+ninja.width/2+10, ninja.y+20);
+  ctx.stroke();
+
+  // katana
+  ctx.beginPath();
+  ctx.moveTo(ninja.x+ninja.width/2+10, ninja.y+20);
+  ctx.lineTo(ninja.x+ninja.width/2+25, ninja.y+25);
+  ctx.stroke();
+}
+
+// Dibujar obstáculos
+function drawObstacles(){
+  obstacles.forEach(obs=>{
+    ctx.fillStyle='#000';
+    if(obs.type===0){ // shuriken girando
+      obs.angle+=0.2;
+      ctx.save();
+      ctx.translate(obs.x+obs.width/2, obs.y+obs.height/2);
+      ctx.rotate(obs.angle);
+      ctx.fillRect(-obs.width/2, -obs.height/2, obs.width, obs.height);
+      ctx.restore();
+    } else if(obs.type===1){ // barril
+      ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+    } else { // espina
+      ctx.beginPath();
+      ctx.moveTo(obs.x, obs.y);
+      ctx.lineTo(obs.x+obs.width/2, obs.y-obs.height);
+      ctx.lineTo(obs.x+obs.width, obs.y);
+      ctx.fill();
+    }
+  });
+}
+
+// Dibujar shurikens
+function drawShurikens(){
+  shurikens.forEach(s=>{
+    ctx.fillStyle='#000';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.width/2, 0, Math.PI*2);
+    ctx.fill();
+    s.x+=s.dx;
+  });
+}
+
+// Colisiones entre ninja y obstáculos
+function checkCollision(rect1, rect2){
+  return rect1.x < rect2.x + rect2.width &&
+         rect1.x + rect1.width > rect2.x &&
+         rect1.y < rect2.y + rect2.height &&
+         rect1.y + rect1.height > rect2.y;
+}
+
+// Update principal
+function update(){
+  frame++;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  if(gameState==='playing'){
+    drawBackground();
+
+    // gravedad
+    ninja.dy+=ninja.gravity;
+    ninja.y+=ninja.dy;
+    if(ninja.y>300){ ninja.y=300; ninja.dy=0; }
+
+    // salto
+    if(keys['Space'] && ninja.y===300) ninja.dy=ninja.jumpPower;
+
+    // mover ninja
+    if(keys['ArrowRight'] && ninja.x<canvas.width-30) ninja.x+=5;
+    if(keys['ArrowLeft'] && ninja.x>0) ninja.x-=5;
+
+    // spawn obstáculos
+    if(frame % Math.max(60, 120-level*10)===0) spawnObstacle();
+
+    // mover obstáculos
+    obstacles.forEach(obs=>obs.x-=5+level);
+
+    // colisiones ninja-obstáculos
+    obstacles.forEach(obs=>{
+      if(checkCollision(ninja, obs)) gameState='gameover';
+    });
+
+    // colisiones shurikens con obstáculos
+    shurikens.forEach((s,i)=>{
+      obstacles.forEach((obs,j)=>{
+        if(checkCollision(s, obs)){
+          obstacles.splice(j,1);
+          shurikens.splice(i,1);
+        }
+      });
+    });
+
+    // limpiar shurikens fuera de pantalla
+    shurikens = shurikens.filter(s=>s.x<canvas.width);
+
+    // dibujar todo
+    drawNinja();
+    drawObstacles();
+    drawShurikens();
+
+    // score y UI
+    score=Math.floor(frame/10);
+    document.getElementById('ui').innerText=`Nivel ${level} - Score: ${score}`;
+
+    // nivel victoria
+    if(score>100*level){
+      level++;
+      obstacles=[];
+      shurikens=[];
+      frame=0;
+      if(level>3){ gameState='victory'; }
+    }
+
+    requestAnimationFrame(update);
+  } else if(gameState==='victory'){
+    ctx.fillStyle='#f5f0e1';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#000';
+    ctx.font='50px Yu Mincho, serif';
+    ctx.textAlign='center';
+    ctx.fillText('¡VICTORIA NINJA!', canvas.width/2, canvas.height/2);
+  } else if(gameState==='gameover'){
+    ctx.fillStyle='#f5f0e1';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#000';
+    ctx.font='50px Yu Mincho, serif';
+    ctx.textAlign='center';
+    ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2-20);
+    ctx.font='20px Yu Mincho, serif';
+    ctx.fillText(`Score: ${score} - Presiona F5 para reintentar`, canvas.width/2, canvas.height/2+20);
+  }
+}
+
+update();
+</script>
+</body>
+</html>
