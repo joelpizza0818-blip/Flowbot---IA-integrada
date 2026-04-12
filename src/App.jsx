@@ -41,9 +41,23 @@ function getViewportMetrics() {
   const viewportHeight = Math.round(vv?.height ?? window.innerHeight);
   const viewportWidth  = Math.round(vv?.width  ?? window.innerWidth);
   const isCompact      = viewportWidth <= MOBILE_BREAKPOINT;
+  const obscuredBottom = Math.max(0, Math.round(window.innerHeight - ((vv?.height ?? window.innerHeight) + (vv?.offsetTop ?? 0))));
+  const keyboardOpen   = isCompact && obscuredBottom > 120;
   return {
     viewportHeight,
     isCompact,
+    keyboardOpen,
+    keyboardOffset: keyboardOpen ? obscuredBottom : 0,
+  };
+}
+
+function getConnectivityInfo() {
+  const isOnline = navigator.onLine;
+  return {
+    label: isOnline ? 'Con internet' : 'Desconectado',
+    detail: isOnline ? 'Red activa' : 'Sin conexión',
+    className: isOnline ? 'is-online' : 'is-offline',
+    isOnline,
   };
 }
 
@@ -127,6 +141,7 @@ function App() {
   const [timerAlert, setTimerAlert]     = useState(null);
   const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [viewportMetrics, setViewportMetrics] = useState(() => getViewportMetrics());
+  const [connectivityInfo, setConnectivityInfo] = useState(() => getConnectivityInfo());
   const [navigationUrl, setNavigationUrl]     = useState(null);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [searchModalType, setSearchModalType] = useState(null);
@@ -167,9 +182,11 @@ function App() {
   const messagesEndRef        = useRef(null);
   const messagesContainerRef  = useRef(null);
   const inputRef              = useRef(null);
+  const composerDockRef       = useRef(null);
   const nextId                = useRef(1);
   const islandDragStateRef    = useRef(null);
   const wasCompactRef         = useRef(null);
+  const [composerHeight, setComposerHeight] = useState(0);
 
   const clampIslandX = useCallback((x) => {
     const margin = 12;
@@ -215,6 +232,33 @@ function App() {
       window.removeEventListener('orientationchange', update);
     };
   }, [clampIslandX]);
+
+  useEffect(() => {
+    const updateConnectivity = () => setConnectivityInfo(getConnectivityInfo());
+    window.addEventListener('online', updateConnectivity);
+    window.addEventListener('offline', updateConnectivity);
+    return () => {
+      window.removeEventListener('online', updateConnectivity);
+      window.removeEventListener('offline', updateConnectivity);
+    };
+  }, []);
+
+  useEffect(() => {
+    const element = composerDockRef.current;
+    if (!element) return;
+
+    const updateHeight = () => setComposerHeight(element.offsetHeight);
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(element);
+    window.addEventListener('resize', updateHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateHeight);
+    };
+  }, [hasConversation, viewportMetrics.isCompact]);
 
   useEffect(() => {
     if (!isComposerFocused || !viewportMetrics.isCompact) return;
@@ -311,6 +355,7 @@ function App() {
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
+    setIslandOpen(false);
     setMascotMood('excited'); // brief excited on send
     setTimeout(() => setMascotMood('thinking'), 600);
 
@@ -493,9 +538,11 @@ function App() {
   ];
 
   const isCompactViewport = viewportMetrics.isCompact;
+  const isMobileKeyboardOpen = viewportMetrics.isCompact && viewportMetrics.keyboardOpen;
   const isEmptyState = !hasConversation;
   const visibleMessages = messages;
   const { usedSlots: displayedContextSlots } = getContextUsage(messages);
+  const liveStatusItems = [envInfo, connectivityInfo];
 
   const activeModelOption = modelOptions.find((option) => option.key === preferredModel) || modelOptions[0];
   const activeThinkingOption = thinkingOptions.find((option) => option.id === thinkingMode) || thinkingOptions[0];
@@ -525,7 +572,13 @@ function App() {
     : 'Ejemplos útiles: "Crea un navbar responsive en React", "Explícame este error", "Optimiza este componente".';
 
   return (
-    <div className="app-container">
+    <div
+      className={`app-container ${hasConversation ? 'app-container-has-conversation' : ''} ${isMobileKeyboardOpen ? 'app-container-keyboard-open' : ''}`}
+      style={{
+        '--composer-mobile-height': `${composerHeight}px`,
+        '--composer-mobile-offset': `${viewportMetrics.keyboardOffset}px`,
+      }}
+    >
       {/* â”€â”€ Timer alert â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {timerAlert && (
         <div className="timer-modal-overlay" onClick={() => setTimerAlert(null)}>
@@ -694,7 +747,7 @@ function App() {
 
       <div className="dynamic-island-layer" aria-hidden={false}>
         <div
-          className={`dynamic-island ${islandOpen ? 'dynamic-island-open' : 'dynamic-island-closed'} ${isTyping ? 'dynamic-island-busy' : ''}`}
+          className={`dynamic-island ${islandOpen ? 'dynamic-island-open' : 'dynamic-island-closed'} ${isTyping ? 'dynamic-island-busy' : ''} ${isCompactViewport ? 'dynamic-island-mobile' : 'dynamic-island-desktop'}`}
           style={{ left: `${islandX}px` }}
         >
           {!islandOpen ? (
@@ -711,7 +764,7 @@ function App() {
               <FlowLogo
                 size={28}
                 animated={true}
-                trackCursor={true}
+                trackCursor={!isCompactViewport}
                 wave={isGreetingWaveActive && !islandOpen && !isTyping}
                 thinking={mascotMood === 'thinking'}
                 celebrating={mascotMood === 'celebrating'}
@@ -733,7 +786,7 @@ function App() {
                 <FlowLogo
                   size={22}
                   animated={true}
-                  trackCursor={true}
+                  trackCursor={!isCompactViewport}
                   wave={isGreetingWaveActive}
                   thinking={mascotMood === 'thinking'}
                   celebrating={mascotMood === 'celebrating'}
@@ -747,6 +800,7 @@ function App() {
                   <span className="dynamic-island-name">FlowBot</span>
                   <div className="dynamic-island-meta-row">
                     <span className={`dynamic-island-env-pill ${envInfo.className}`}>{envInfo.label}</span>
+                    <span className={`dynamic-island-env-pill ${connectivityInfo.className}`}>{connectivityInfo.label}</span>
                     <span className="dynamic-island-memory">
                       <span className="dynamic-island-memory-label">Memoria</span>
                       <span className="dynamic-island-memory-value">{displayedContextSlots}/{CONTEXT_WINDOW_SIZE}</span>
@@ -798,10 +852,12 @@ function App() {
                     <span className="empty-state-kicker-dot"></span>
                     Desarrolla y crea mas rapido
                   </div>
-                  <span className={`hero-live-pill ${envInfo.className}`}>
-                    <span className="hero-env-dot" />
-                    {envInfo.label}
-                  </span>
+                  {liveStatusItems.map((status) => (
+                    <span key={status.className} className={`hero-live-pill ${status.className}`} title={status.detail}>
+                      <span className="hero-env-dot" />
+                      {status.label}
+                    </span>
+                  ))}
                 </div>
 
                 <div className="empty-state-head">
@@ -885,7 +941,10 @@ function App() {
         </div>
 
         {/* â”€â”€ Composer dock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-        <div className={`composer-dock ${hasConversation ? 'composer-dock-compact' : ''}`}>
+        <div
+          ref={composerDockRef}
+          className={`composer-dock ${hasConversation ? 'composer-dock-compact' : ''} ${hasConversation && isCompactViewport ? 'composer-dock-mobile-pinned' : ''}`}
+        >
           <div className="composer-shell">
             <div className={`quick-actions ${isComposerFocused && viewportMetrics.isCompact ? 'quick-actions-hidden' : ''} ${hasConversation ? 'quick-actions-compact' : ''}`}>
               {quickActions.map((action) => (
@@ -920,6 +979,7 @@ function App() {
                   <span className="composer-inline-pill">{activeModelOption.label}</span>
                   {!isCompactViewport && <span className={`composer-inline-pill ${memoryPreviewEnabled ? '' : 'is-muted'}`}>Memoria {displayedContextSlots}/{CONTEXT_WINDOW_SIZE}</span>}
                   <span className={`composer-inline-pill ${envInfo.className}`}>{envInfo.label}</span>
+                  <span className={`composer-inline-pill ${connectivityInfo.className}`}>{connectivityInfo.label}</span>
                 </div>
               </div>
 

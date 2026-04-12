@@ -49,11 +49,11 @@ export default function FlowLogo({
       const normalizedY = Math.max(-1, Math.min(1, dy / (rect.height * 0.6))) * rangeFactor;
 
       setCursorPose({
-        eyeX: normalizedX * -3.4,
+        eyeX: normalizedX * 3.4,
         eyeY: normalizedY * 3.4,
-        bodyX: normalizedX * -5.1,
+        bodyX: normalizedX * 5.1,
         bodyY: normalizedY * 4.9,
-        bodyRotate: normalizedX * -8.8,
+        bodyRotate: normalizedX * 8.8,
         bodyPitch: normalizedY * -4.1,
       });
     };

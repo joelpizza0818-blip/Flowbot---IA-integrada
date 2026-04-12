@@ -502,6 +502,16 @@ textarea {
   color: #ffb300;
 }
 
+.dynamic-island-env-pill.is-online {
+  background: rgba(97, 240, 168, 0.12);
+  color: var(--success);
+}
+
+.dynamic-island-env-pill.is-offline {
+  background: rgba(255, 117, 143, 0.14);
+  color: var(--danger);
+}
+
 .dynamic-island-title {
   font-size: 0.94rem;
   font-weight: 700;
@@ -1354,6 +1364,26 @@ textarea {
   box-shadow: 0 0 14px rgba(255, 179, 0, 0.5);
 }
 
+.hero-live-pill.is-online {
+  background: rgba(97, 240, 168, 0.12);
+  color: var(--success);
+}
+
+.hero-live-pill.is-online .hero-env-dot {
+  background: var(--success);
+  box-shadow: 0 0 14px rgba(97, 240, 168, 0.4);
+}
+
+.hero-live-pill.is-offline {
+  background: rgba(255, 117, 143, 0.12);
+  color: var(--danger);
+}
+
+.hero-live-pill.is-offline .hero-env-dot {
+  background: var(--danger);
+  box-shadow: 0 0 14px rgba(255, 117, 143, 0.4);
+}
+
 .empty-state-head {
   display: grid;
   gap: 14px;
@@ -2203,16 +2233,37 @@ textarea {
 }
 
 @media (max-width: 767px) {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
+  }
+
+  body {
+    overscroll-behavior-y: auto;
+  }
+
   :root {
     --sidebar-width: min(88vw, 320px);
   }
 
   .app-container {
     display: block;
+    min-height: 100dvh;
+    height: auto;
+    overflow: visible;
+  }
+
+  .chat-main {
+    min-height: 100dvh;
+    padding-bottom: calc(var(--composer-mobile-height, 0px) + 20px + var(--safe-bottom));
   }
 
   .messages-container {
-    padding: calc(env(safe-area-inset-top, 0px) + clamp(80px, 9vh, 96px)) 12px calc(16px + var(--safe-bottom));
+    flex: 0 0 auto;
+    overflow: visible;
+    padding: calc(env(safe-area-inset-top, 0px) + clamp(80px, 9vh, 96px)) 12px calc(16px + var(--composer-mobile-height, 0px) + var(--safe-bottom));
   }
 
   .empty-state-hero {
@@ -2230,6 +2281,11 @@ textarea {
     top: calc(env(safe-area-inset-top, 0px) + 12px);
   }
 
+  .dynamic-island {
+    left: 50% !important;
+    width: min(calc(100vw - 24px), 560px);
+  }
+
   .dynamic-island-panel {
     width: 100%;
     border-radius: 28px;
@@ -2237,6 +2293,8 @@ textarea {
     flex-direction: column;
     min-width: min(320px, calc(100vw - 20px));
     max-width: calc(100vw - 20px);
+    padding: 12px;
+    background: linear-gradient(180deg, rgba(7, 11, 17, 0.98), rgba(10, 16, 24, 0.94));
   }
 
   .dynamic-island-brand,
@@ -2244,13 +2302,31 @@ textarea {
     width: 100%;
   }
 
+  .dynamic-island-brand {
+    border-radius: 20px;
+    padding: 12px 14px;
+  }
+
   .dynamic-island-actions {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .dynamic-island-action {
     width: 100%;
     justify-content: center;
+    min-height: 46px;
+    border-radius: 16px;
+  }
+
+  .dynamic-island-copy {
+    align-items: flex-start;
+  }
+
+  .dynamic-island-meta-row {
+    width: 100%;
+    gap: 6px;
   }
 
   .empty-state-title {
@@ -2288,6 +2364,18 @@ textarea {
     padding: 0 12px calc(12px + var(--safe-bottom));
   }
 
+  .composer-dock-mobile-pinned {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--composer-mobile-offset, 0px);
+    z-index: 28;
+    background: linear-gradient(180deg, rgba(6, 10, 15, 0), rgba(6, 10, 15, 0.92) 28%, rgba(6, 10, 15, 0.98));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: bottom var(--transition-base), transform var(--transition-base);
+  }
+
   .composer-shell {
     gap: 8px;
   }
@@ -2323,6 +2411,14 @@ textarea {
     border-radius: 20px;
   }
 
+  .app-container-keyboard-open .composer-dock-mobile-pinned {
+    padding-bottom: 8px;
+  }
+
+  .app-container-keyboard-open .quick-actions {
+    display: none;
+  }
+
   .composer-status-copy {
     display: none;
   }
@@ -2341,19 +2437,20 @@ textarea {
   }
 
   .input-selectors {
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    overflow: visible;
     padding-bottom: 2px;
   }
 
   .selector-wrapper {
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .selector-btn,
   .memory-pill {
     min-height: var(--touch-target);
-    width: auto;
+    width: 100%;
     white-space: nowrap;
   }
 
@@ -2362,6 +2459,7 @@ textarea {
     right: auto;
     min-width: min(320px, calc(100vw - 24px));
     max-width: min(320px, calc(100vw - 24px));
+    z-index: 60;
   }
 
   .input-wrapper {
@@ -2443,6 +2541,10 @@ textarea {
     min-width: calc(100vw - 16px);
     max-width: calc(100vw - 16px);
     border-radius: 24px;
+  }
+
+  .dynamic-island-actions {
+    grid-template-columns: 1fr;
   }
 
   .quick-action-btn {
@@ -2580,6 +2682,18 @@ textarea {
   background: rgba(255, 179, 0, 0.1);
   color: #ffb300;
   border-color: rgba(255, 179, 0, 0.2);
+}
+
+.composer-inline-pill.is-online {
+  background: rgba(97, 240, 168, 0.1);
+  color: var(--success);
+  border-color: rgba(97, 240, 168, 0.2);
+}
+
+.composer-inline-pill.is-offline {
+  background: rgba(255, 117, 143, 0.1);
+  color: var(--danger);
+  border-color: rgba(255, 117, 143, 0.2);
 }
 
 /* ── Ephemeral Messages ──────────────────────────────────────────────────── */
