@@ -1,6 +1,5 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import FlowLogo from './components/FlowLogo';
-import BackgroundLogo from './components/BackgroundLogo';
 import ChatMessage from './components/ChatMessage';
 import IntentIcon from './components/IntentIcon';
 import {
@@ -12,8 +11,25 @@ import { CONTEXT_WINDOW_SIZE, getContextUsage } from './contextPrompt';
 import './App.css';
 
 const MOBILE_BREAKPOINT        = 768;
-const LARGE_DESKTOP_BREAKPOINT = 1280;
-const KEYBOARD_THRESHOLD       = 120;
+const IDLE_TIMEOUT_MS          = 15000;
+
+function getEnvironmentInfo() {
+  const host = window.location.hostname;
+  const isProxy = !!import.meta.env.VITE_PROXY_URL;
+
+  // 1. En linea (Deployed logic)
+  if (host.endsWith('.github.io') || host.endsWith('.vercel.app') || host.endsWith('.netlify.app')) {
+    return { label: 'En linea', detail: 'Deploy', isLocal: false, className: 'is-deployed' };
+  }
+
+  // 2. Proxy (Running with proxy server)
+  if (isProxy) {
+    return { label: 'Proxy', detail: 'Backend Proxy', isLocal: true, className: 'is-proxy' };
+  }
+
+  // 3. Local (Running local purely with frontend logic)
+  return { label: 'Local', detail: 'Logica Nativa', isLocal: true, className: 'is-local' };
+}
 
 function getTimeString() {
   return new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
@@ -23,20 +39,17 @@ function getViewportMetrics() {
   const vv             = window.visualViewport;
   const viewportHeight = Math.round(vv?.height ?? window.innerHeight);
   const viewportWidth  = Math.round(vv?.width  ?? window.innerWidth);
-  const offsetTop      = Math.round(vv?.offsetTop ?? 0);
-  const keyboardOffset = Math.max(0, window.innerHeight - viewportHeight - offsetTop);
   const isCompact      = viewportWidth <= MOBILE_BREAKPOINT;
   return {
     viewportHeight,
     isCompact,
-    keyboardOffset: isCompact && keyboardOffset > KEYBOARD_THRESHOLD ? keyboardOffset : 0,
   };
 }
 
 function createWelcomeMessage() {
   return {
     id: 0, sender: 'bot',
-    text: '**Bienvenido a FlowBot.** Estoy listo para ayudarte a crear interfaces, depurar errores, explicar codigo y aterrizar ideas web en respuestas accionables.',
+    text: '**Bienvenido a FlowBot.** Estoy listo para ayudarte a crear interfaces, depurar errores, explicar código y aterrizar ideas web en respuestas accionables.',
     iconName: 'ayuda', intents: [], time: getTimeString(),
   };
 }
@@ -65,27 +78,38 @@ function ThinkingModeIcon({ mode, size = 16 }) {
 }
 
 function ModelIcon({ group, size = 16 }) {
-  const svgProps = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' };
-  if (group === 'groq') return (
-    <svg {...svgProps}>
-      <circle cx="12" cy="12" r="8" />
-      <path d="M12 4v16" />
-      <path d="M4 12h16" />
-    </svg>
-  );
-  if (group === 'gemini-3.1') return (
-    <svg {...svgProps}>
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-    </svg>
-  );
-  if (group === 'gemini-2.5') return (
-    <svg {...svgProps}>
-      <path d="M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2z"/>
-      <path d="M12 12v10M8 16l4 4 4-4"/>
-    </svg>
-  );
+  const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' };
+  
+  if (group === 'groq') {
+    return (
+      <svg {...p}>
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 4v16" />
+        <path d="M4 12h16" />
+      </svg>
+    );
+  }
+  
+  if (group === 'gemini-3.1') {
+    return (
+      <svg {...p}>
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+    );
+  }
+
+  if (group === 'gemini-2.5') {
+    return (
+      <svg {...p}>
+        <path d="M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2z"/>
+        <path d="M12 12v10M8 16l4 4 4-4"/>
+      </svg>
+    );
+  }
+
   return (
-    <svg {...svgProps}>
+    <svg {...p}>
+      <circle cx="12" cy="12" r="9" />
       <path d="M12 3a9 9 0 1 0 0 18A9 9 0 0 0 12 3z"/>
       <path d="M3 12h18"/>
       <path d="M12 3a9 9 0 0 1 0 18"/>
@@ -93,9 +117,9 @@ function ModelIcon({ group, size = 16 }) {
   );
 }
 
-// ── App ────────────────────────────────────────────────────────────────────────
+// â”€â”€ App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function App() {
-  const [messages, setMessages]         = useState([createWelcomeMessage()]);
+  const [messages, setMessages]         = useState([]);
   const [input, setInput]               = useState('');
   const [isTyping, setIsTyping]         = useState(false);
   const [isComposerFocused, setIsComposerFocused] = useState(false);
@@ -103,7 +127,6 @@ function App() {
   const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [viewportMetrics, setViewportMetrics] = useState(() => getViewportMetrics());
   const [navigationUrl, setNavigationUrl]     = useState(null);
-  const [isAIOnline, setIsAIOnline]           = useState(true);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [searchModalType, setSearchModalType] = useState(null);
   const [searchModalInput, setSearchModalInput] = useState('');
@@ -113,10 +136,29 @@ function App() {
   const [thinkingMode, setThinkingMode]       = useState('normal');
   const [preferredModel, setPreferredModel]   = useState('auto');
   const [memoryPreviewEnabled, setMemoryPreviewEnabled] = useState(true);
+  const [isEphemeralMode, setIsEphemeralMode] = useState(false);
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [islandOpen, setIslandOpen] = useState(false);
   const [islandX, setIslandX] = useState(() => Math.max(88, Math.round(window.innerWidth / 2)));
+
+  // Mascot mood state
+  const [mascotMood, setMascotMood] = useState('idle'); // idle | listening | thinking | celebrating | sleeping | excited | coveringEyes | shh
+  const [justReceivedResponse, setJustReceivedResponse] = useState(false);
+  const idleTimerRef = useRef(null);
+  const envInfo = getEnvironmentInfo();
+
+  const handleEphemeralStatus = useCallback((status) => {
+    if (status === 'revealed') {
+      setMascotMood('coveringEyes');
+    } else if (status === 'consumed') {
+      setMascotMood('shh');
+      // Auto revert 'shh' after 2.5s
+      setTimeout(() => {
+        setMascotMood((current) => current === 'shh' ? 'idle' : current);
+      }, 2500);
+    }
+  }, []);
 
   const messagesEndRef        = useRef(null);
   const messagesContainerRef  = useRef(null);
@@ -125,22 +167,13 @@ function App() {
   const islandDragStateRef    = useRef(null);
   const wasCompactRef         = useRef(null);
 
-  const isKeyboardVisible   = viewportMetrics.isCompact && viewportMetrics.keyboardOffset > 0;
-  const isCompactViewport   = viewportMetrics.isCompact;
-  const visibleMessages     = messages.filter((m) => m.id !== 0);
-  const isEmptyState        = visibleMessages.length === 0;
-  const { usedSlots: usedContextSlots } = getContextUsage(visibleMessages);
-  const displayedContextSlots = memoryPreviewEnabled ? usedContextSlots : 0;
-  const hasConversation = visibleMessages.length > 0;
+  const clampIslandX = useCallback((x) => {
+    const margin = 12;
+    const halfWidth = 88 / 2;
+    return Math.max(margin + halfWidth, Math.min(window.innerWidth - margin - halfWidth, x));
+  }, []);
 
-  const appContainerClassName = ['app-container', viewportMetrics.isCompact ? 'is-mobile' : 'is-desktop', isComposerFocused && isKeyboardVisible ? 'keyboard-visible' : '', isComposerFocused ? 'composer-focused' : '', sidebarOpen ? 'sidebar-open-state' : ''].filter(Boolean).join(' ');
-  const appContainerStyle     = { '--app-height': `${viewportMetrics.viewportHeight}px`, '--keyboard-offset': `${viewportMetrics.keyboardOffset}px` };
 
-  function clampIslandX(nextX) {
-    const min = 72;
-    const max = Math.max(min, window.innerWidth - 72);
-    return Math.min(Math.max(nextX, min), max);
-  }
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
   useEffect(() => { if (navigationUrl) window.location.href = navigationUrl; }, [navigationUrl]);
@@ -177,7 +210,7 @@ function App() {
       window.removeEventListener('resize', update);
       window.removeEventListener('orientationchange', update);
     };
-  }, []);
+  }, [clampIslandX]);
 
   useEffect(() => {
     if (!isComposerFocused || !viewportMetrics.isCompact) return;
@@ -203,22 +236,67 @@ function App() {
     return () => document.removeEventListener('click', handler);
   }, [thinkingDropdownOpen, modelDropdownOpen]);
 
-  // ── Send message ─────────────────────────────────────────────────────────────
+  // â”€â”€ Mascot mood: idle â†’ sleeping after 30s â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    if (mascotMood === 'sleeping') setMascotMood('idle');
+    idleTimerRef.current = setTimeout(() => {
+      setMascotMood((prev) => (prev === 'idle' ? 'sleeping' : prev));
+    }, IDLE_TIMEOUT_MS);
+  }, [mascotMood]);
+
+  useEffect(() => {
+    const bootstrapTimerId = window.setTimeout(() => {
+      resetIdleTimer();
+    }, 0);
+    const wakeEvents = ['mousemove', 'keydown', 'touchstart', 'scroll'];
+    const wakeHandler = () => resetIdleTimer();
+    wakeEvents.forEach((ev) => window.addEventListener(ev, wakeHandler, { passive: true }));
+    return () => {
+      window.clearTimeout(bootstrapTimerId);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      wakeEvents.forEach((ev) => window.removeEventListener(ev, wakeHandler));
+    };
+  }, [resetIdleTimer]);
+
+  // Mascot reacts to typing state
+  useEffect(() => {
+    if (isTyping) {
+      const thinkingTimerId = window.setTimeout(() => {
+        setMascotMood('thinking');
+      }, 0);
+      return () => window.clearTimeout(thinkingTimerId);
+    } else if (justReceivedResponse) {
+      const celebrateTimerId = window.setTimeout(() => {
+        setMascotMood('celebrating');
+      }, 0);
+      const idleTimerId = window.setTimeout(() => {
+        setMascotMood('idle');
+        setJustReceivedResponse(false);
+      }, 2200);
+      return () => {
+        window.clearTimeout(celebrateTimerId);
+        window.clearTimeout(idleTimerId);
+      };
+    }
+  }, [isTyping, justReceivedResponse]);
+
+  // â”€â”€ Send message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function handleSend() {
     const trimmed = input.trim();
     if (!trimmed) return;
 
-    const userMsg = { id: nextId.current++, sender: 'user', text: trimmed, intents: [], time: getTimeString() };
+    const userMsg = { id: nextId.current++, sender: 'user', text: trimmed, intents: [], time: getTimeString(), ephemeral: isEphemeralMode };
     const recentConversation = [...visibleMessages, userMsg];
 
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
+    setMascotMood('excited'); // brief excited on send
+    setTimeout(() => setMascotMood('thinking'), 600);
 
     (async () => {
       const response    = await generateBotResponse(trimmed, recentConversation, preferredModel, thinkingMode);
-      const isOffline   = Boolean(response.error) || response.source === 'proxy-error' || response.text?.includes('no esta disponible') || response.text?.includes('intenta más tarde');
-      setIsAIOnline(!isOffline);
 
       const botMsg = {
         id:            nextId.current++,
@@ -231,10 +309,12 @@ function App() {
         model:         response.model,
         fallbackReason: response.fallbackReason,
         thinkingMode:  response.thinkingMode,
+        ephemeral:     isEphemeralMode,
       };
 
       setMessages((prev) => [...prev, botMsg]);
       setIsTyping(false);
+      setJustReceivedResponse(true);
 
       if (botMsg.actions?.length) {
         botMsg.actions.forEach(({ action }) => {
@@ -297,7 +377,7 @@ function App() {
     const trimmed = timeInput.trim();
     if (!trimmed) return;
     let seconds = 0;
-    const m = trimmed.match(/(\d+(?:[.,]\d+)?)\s*(s|seg|segundo|minuto|min|m|h|hora)?/i);
+    const m = trimmed.match(/(\d+(?:[.,]\d+)?)\s*(s|seg|segúndo|minuto|min|m|h|hora)?/i);
     if (m) {
       const val = parseFloat(m[1].replace(',', '.'));
       const unit = (m[2] || 's').toLowerCase();
@@ -354,13 +434,13 @@ function App() {
       label: 'Codigo',
       mobileLabel: 'UI',
       hint: 'Componentes y UI',
-      prompt: 'Crea un navbar responsive en React con menu movil accesible y estados claros.',
+      prompt: 'Crea un navbar responsive en React con menú móvil accesible y estados claros.',
     },
     {
       label: 'Aprender',
       mobileLabel: 'Explicar',
       hint: 'Explicado paso a paso',
-      prompt: 'Explicame este concepto de React como si estuviera empezando y dame un ejemplo practico.',
+      prompt: 'Explícame este concepto de React como si estuviera empezando y dame un ejemplo práctico.',
     },
     {
       label: 'Debug',
@@ -377,45 +457,52 @@ function App() {
   ];
 
   const modelOptions = [
-    { key: 'auto', label: 'Automatico', desc: 'FlowBot elige entre Gemini 3.1 y GPT OSS segun la consulta.' },
-    { key: 'gemini-3.1', label: 'Gemini 3.1', desc: 'Mas fuerte para arquitectura, UI compleja y respuestas largas.' },
-    { key: 'groq', label: 'GPT OSS / Llama', desc: 'Mas rapido para debugging, dudas breves y consultas iterativas.' },
+    { key: 'auto', label: 'Automático', desc: 'FlowBot elige entre Gemini 3.1 y GPT OSS según la consulta.' },
+    { key: 'gemini-3.1', label: 'Gemini 3.1', desc: 'Más fuerte para arquitectura, UI compleja y respuestas largas.' },
+    { key: 'groq', label: 'GPT OSS / Llama', desc: 'Más rápido para debugging, dudas breves y consultas iterativas.' },
   ];
   const thinkingOptions = [
-    { id: 'normal', label: 'Normal', desc: 'Equilibrado para la mayoria de consultas.' },
+    { id: 'normal', label: 'Normal', desc: 'Equilibrado para la mayoría de consultas.' },
     { id: 'deep', label: 'Profundo', desc: 'Analiza con mas detalle y razonamiento paso a paso.' },
-    { id: 'short', label: 'Rapido', desc: 'Va directo al punto con menos texto.' },
+    { id: 'short', label: 'Rápido', desc: 'Va directo al punto con menos texto.' },
   ];
+
+  const isCompactViewport = viewportMetrics.isCompact;
+  const hasConversation = messages.length > 1;
+  const isEmptyState = !hasConversation;
+  const visibleMessages = messages;
+  const { usedSlots: displayedContextSlots } = getContextUsage(messages);
 
   const activeModelOption = modelOptions.find((option) => option.key === preferredModel) || modelOptions[0];
   const activeThinkingOption = thinkingOptions.find((option) => option.id === thinkingMode) || thinkingOptions[0];
+
   const composerPlaceholder =
     activeModelOption.key === 'gemini-3.1'
       ? 'Arquitecta un dashboard en React con estados claros, filtros y tabla responsive'
       : activeModelOption.key === 'groq'
         ? 'Depura este error de hydration en Next.js 15 y dime la causa raiz'
-        : 'Crea un navbar responsive en React con menu movil accesible';
+        : 'Crea un navbar responsive en React con menú móvil accesible';
   const memorySummary = !memoryPreviewEnabled
     ? 'Vista previa pausada'
     : displayedContextSlots === 0
       ? 'Lista para seguir tu hilo'
       : displayedContextSlots < CONTEXT_WINDOW_SIZE * 0.55
         ? 'Memoria aprendiendo el contexto actual'
-        : 'Memoria lista para conversaciones largas';
+        : 'Memoria lista para conversaciónes largas';
   const heroDescription = isCompactViewport
     ? 'Pide una feature, pega un bug o aterriza una idea en codigo listo para iterar.'
-    : 'Pidele una feature, pega un bug o aterriza una idea en codigo listo para iterar. Todo desde un chat pensado para productos web reales.';
+    : 'Pídele una feature, pega un bug o aterriza una idea en codigo listo para iterar. Todo desde un chat pensado para productos web reales.';
   const composerStatusLabel = isTyping ? 'Respondiendo' : (isCompactViewport ? 'Nueva consulta' : 'Listo para colaborar');
   const composerStatusDescription = isTyping
-    ? 'FlowBot esta preparando una respuesta.'
+    ? 'FlowBot está preparando una respuesta.'
     : 'Pega codigo, describe el bug o pide la feature completa.';
   const composerHint = isCompactViewport
-    ? 'Atajos rapidos arriba. Enter para enviar.'
-    : 'Ejemplos utiles: "Crea un navbar responsive en React", "Explicame este error", "Optimiza este componente".';
+    ? 'Atajos rápidos arriba. Enter para enviar.'
+    : 'Ejemplos útiles: "Crea un navbar responsive en React", "Explícame este error", "Optimiza este componente".';
 
   return (
-    <div className={appContainerClassName} style={appContainerStyle}>
-      {/* ── Timer alert ─────────────────────────────────────────────────────── */}
+    <div className="app-container">
+      {/* â”€â”€ Timer alert â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {timerAlert && (
         <div className="timer-modal-overlay" onClick={() => setTimerAlert(null)}>
           <div className="timer-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -424,7 +511,7 @@ function App() {
                 <IntentIcon name="automatizar" size={24} />
               </div>
               <div>
-                <p className="modal-eyebrow">Automatizacion</p>
+                <p className="modal-eyebrow">Automatización</p>
                 <h3>{timerAlert.finished ? 'Temporizador completado' : 'Temporizador activo'}</h3>
               </div>
             </div>
@@ -440,19 +527,19 @@ function App() {
         </div>
       )}
 
-      {/* ── Search modal ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Search modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {searchModalOpen && (
         <div className="search-modal-overlay" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>
           <div className="search-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="search-modal-header">
               <div>
-                <p className="modal-eyebrow">Busqueda rapida</p>
+                <p className="modal-eyebrow">Búsqueda rápida</p>
                 <h3>{searchModalType === 'youtube' ? 'Abrir en YouTube' : 'Abrir en Google'}</h3>
               </div>
               <button className="search-modal-close" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>X</button>
             </div>
             <div className="search-modal-body">
-              <input type="text" className="search-modal-input" placeholder={searchModalType === 'youtube' ? 'Busca un tutorial o video' : 'Busca una referencia, bug o libreria'} value={searchModalInput} onChange={(e) => setSearchModalInput(e.target.value)}
+              <input type="text" className="search-modal-input" placeholder={searchModalType === 'youtube' ? 'Busca un tutorial o video' : 'Busca una referencia, bug o librería'} value={searchModalInput} onChange={(e) => setSearchModalInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && searchModalInput.trim()) { const url = searchModalType === 'youtube' ? `https://www.youtube.com/results?search_query=${encodeURIComponent(searchModalInput)}` : `https://www.google.com/search?q=${encodeURIComponent(searchModalInput)}`; setNavigationUrl(url); setSearchModalOpen(false); setSearchModalInput(''); } }} autoFocus />
             </div>
             <div className="search-modal-footer">
@@ -465,7 +552,7 @@ function App() {
         </div>
       )}
 
-      {/* ── Timer modal ──────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Timer modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {timerModalOpen && (
         <div className="timer-modal-overlay" onClick={() => { setTimerModalOpen(false); setTimerModalValue(''); }}>
           <div className="timer-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -489,7 +576,7 @@ function App() {
         </div>
       )}
 
-      {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-brand">
@@ -574,7 +661,7 @@ function App() {
         <div className="sidebar-footer">
           <button className="clear-chat-btn" onClick={handleClearChat}>
             <span className="btn-icon"><IntentIcon name="clear" size={16} /></span>
-            <span>Nueva conversacion</span>
+            <span>Nueva conversación</span>
           </button>
         </div>
       </aside>
@@ -583,7 +670,7 @@ function App() {
 
       <div className="dynamic-island-layer" aria-hidden={false}>
         <div
-          className={`dynamic-island ${islandOpen ? 'dynamic-island-open' : 'dynamic-island-closed'}`}
+          className={`dynamic-island ${islandOpen ? 'dynamic-island-open' : 'dynamic-island-closed'} ${isTyping ? 'dynamic-island-busy' : ''}`}
           style={{ left: `${islandX}px` }}
         >
           {!islandOpen ? (
@@ -596,7 +683,20 @@ function App() {
               onPointerCancel={() => { islandDragStateRef.current = null; }}
               aria-label="Abrir isla dinamica"
             >
-              <FlowLogo size={28} wave={hasConversation} />
+              <span className="dynamic-island-glow-ring" />
+              <FlowLogo
+                size={28}
+                animated={true}
+                trackCursor={true}
+                wave={!islandOpen && !isTyping && hasConversation}
+                thinking={mascotMood === 'thinking'}
+                celebrating={mascotMood === 'celebrating'}
+                sleeping={mascotMood === 'sleeping'}
+                excited={mascotMood === 'excited'}
+                listening={mascotMood === 'listening'}
+                coveringEyes={mascotMood === 'coveringEyes'}
+                shh={mascotMood === 'shh'}
+              />
             </button>
           ) : (
             <div className="dynamic-island-panel">
@@ -606,12 +706,35 @@ function App() {
                 onClick={() => setIslandOpen(false)}
                 aria-label="Cerrar isla dinamica"
               >
-                <FlowLogo size={22} wave={hasConversation} />
+                <FlowLogo
+                  size={22}
+                  animated={true}
+                  trackCursor={true}
+                  wave={hasConversation}
+                  thinking={mascotMood === 'thinking'}
+                  celebrating={mascotMood === 'celebrating'}
+                  sleeping={mascotMood === 'sleeping'}
+                  excited={mascotMood === 'excited'}
+                  listening={mascotMood === 'listening'}
+                  coveringEyes={mascotMood === 'coveringEyes'}
+                  shh={mascotMood === 'shh'}
+                />
                 <div className="dynamic-island-copy">
                   <span className="dynamic-island-name">FlowBot</span>
-                  <span className="dynamic-island-memory">Memoria {displayedContextSlots}/{CONTEXT_WINDOW_SIZE}</span>
+                  <div className="dynamic-island-meta-row">
+                    <span className={`dynamic-island-env-pill ${envInfo.className}`}>{envInfo.label}</span>
+                    <span className="dynamic-island-memory">
+                      <span className="dynamic-island-memory-label">Memoria</span>
+                      <span className="dynamic-island-memory-value">{displayedContextSlots}/{CONTEXT_WINDOW_SIZE}</span>
+                    </span>
+                  </div>
                 </div>
               </button>
+
+              {/* Memory mini progress bar */}
+              <div className="dynamic-island-progress">
+                <div className="dynamic-island-progress-fill" style={{ width: `${Math.min(100, (displayedContextSlots / CONTEXT_WINDOW_SIZE) * 100)}%` }} />
+              </div>
 
               <div className="dynamic-island-actions">
                 <button type="button" className="dynamic-island-action" onClick={() => { setSidebarOpen(true); setIslandOpen(false); }}>
@@ -622,7 +745,14 @@ function App() {
                   </svg>
                   <span>Menu</span>
                 </button>
-                <button type="button" className="dynamic-island-action" onClick={handleClearChat}>
+                <button type="button" className="dynamic-island-action" onClick={() => { setMemoryPreviewEnabled((v) => !v); }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />
+                    <path d="M12 6v6l4 2" />
+                  </svg>
+                  <span>Memoria</span>
+                </button>
+                <button type="button" className="dynamic-island-action dynamic-island-action-danger" onClick={handleClearChat}>
                   <IntentIcon name="clear" size={16} />
                   <span>Limpiar</span>
                 </button>
@@ -632,28 +762,28 @@ function App() {
         </div>
       </div>
 
-      {/* ── Main ─────────────────────────────────────────────────────────────── */}
-      <main className={`chat-main ${isEmptyState ? 'chat-main-empty' : ''}`}>
-        {/* ── Messages ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <main className="chat-main">
+        {/* â”€â”€ Messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className={`messages-container ${isEmptyState ? 'messages-container-empty' : ''}`} ref={messagesContainerRef}>
           <div className={`messages-inner ${isEmptyState ? 'messages-inner-empty' : ''}`}>
-            {isEmptyState && <BackgroundLogo />}
             {isEmptyState && (
               <section className="empty-state-hero" aria-label="Portada de FlowBot">
                 <div className="hero-live-row">
                   <div className="empty-state-kicker">
                     <span className="empty-state-kicker-dot"></span>
-                    Desarolla y crea mas rapido
+                    Desarrolla y crea mas rapido
                   </div>
-                  <span className={`hero-live-pill ${isAIOnline ? 'is-online' : 'is-offline'}`}>
-                    {isAIOnline ? 'Servicio online' : 'Modo fallback'}
+                  <span className={`hero-live-pill ${envInfo.className}`}>
+                    <span className="hero-env-dot" />
+                    {envInfo.label}
                   </span>
                 </div>
 
                 <div className="empty-state-head">
                   <div className="empty-state-copy">
                     <p className="empty-state-eyebrow">FlowBot para developers</p>
-                    <h2 className="empty-state-title">Construye mas rapido. Depura con contexto. Aprende mientras envias.</h2>
+                    <h2 className="empty-state-title">Construye más rapido. Depura con contexto. Aprende mientras envías.</h2>
                     <div className="empty-state-description-container">
                       <p className="empty-state-description">
                         {heroDescription}
@@ -687,18 +817,39 @@ function App() {
                     <strong>{activeModelOption.label}</strong>
                     <p>{isCompactViewport ? 'Preferencia activa para responder.' : activeModelOption.desc}</p>
                   </article>
+
+                  <article className={`hero-feature-card ${isEphemeralMode ? 'hero-feature-card-active' : ''}`}>
+                    <div className="hero-feature-topline">
+                      <span className="hero-feature-label">Efímero</span>
+                      <button
+                        type="button"
+                        className={`memory-toggle ${isEphemeralMode ? 'memory-toggle-on' : ''}`}
+                        aria-pressed={isEphemeralMode}
+                        onClick={() => setIsEphemeralMode((v) => !v)}
+                      >
+                        <span></span>
+                      </button>
+                    </div>
+                    <strong>{isEphemeralMode ? 'Vista única ON' : 'Vista única OFF'}</strong>
+                    <p>Los mensajes desaparecen por completo después de ser vistos.</p>
+                  </article>
                 </div>
               </section>
             )}
 
             {visibleMessages.map((message, index) => (
-              <ChatMessage key={message.id} message={message} isLatest={index === visibleMessages.length - 1} />
+              <ChatMessage 
+                key={message.id} 
+                message={message} 
+                isLatest={index === visibleMessages.length - 1}
+                onStatusChange={handleEphemeralStatus}
+              />
             ))}
 
             {isTyping && (
               <div className="chat-message bot-message message-enter">
                 <div className="bot-avatar">
-                  <FlowLogo size={24} reading />
+                  <FlowLogo size={24} reading thinking />
                 </div>
                 <div className="message-bubble bot-bubble typing-bubble">
                   <div className="typing-indicator"><span></span><span></span><span></span></div>
@@ -709,10 +860,10 @@ function App() {
           </div>
         </div>
 
-        {/* ── Composer dock ─────────────────────────────────────────────────── */}
-        <div className={`composer-dock ${isKeyboardVisible ? 'composer-dock-keyboard' : ''} ${isEmptyState ? 'composer-dock-empty' : ''} ${hasConversation ? 'composer-dock-compact' : ''}`}>
+        {/* â”€â”€ Composer dock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        <div className={`composer-dock ${hasConversation ? 'composer-dock-compact' : ''}`}>
           <div className="composer-shell">
-            <div className={`quick-actions ${isComposerFocused && viewportMetrics.isCompact ? 'quick-actions-hidden' : ''} ${isEmptyState ? 'quick-actions-empty' : ''} ${hasConversation ? 'quick-actions-compact' : ''}`}>
+            <div className={`quick-actions ${isComposerFocused && viewportMetrics.isCompact ? 'quick-actions-hidden' : ''} ${hasConversation ? 'quick-actions-compact' : ''}`}>
               {quickActions.map((action) => (
                 <button key={action.label} className="quick-action-btn" onClick={() => { setInput(action.prompt); inputRef.current?.focus(); }} title={action.prompt}>
                   <span className="quick-action-copy">
@@ -729,7 +880,7 @@ function App() {
               ))}
             </div>
 
-            <div className={`input-area ${isEmptyState ? 'input-area-empty' : ''} ${hasConversation ? 'input-area-compact' : ''}`}>
+            <div className={`input-area ${hasConversation ? 'input-area-compact' : ''}`}>
               <div className={`composer-topline ${hasConversation ? 'composer-topline-compact' : ''}`}>
                 <div className="composer-status-stack">
                   <span className={`composer-status-badge ${isTyping ? 'is-busy' : ''}`}>
@@ -744,17 +895,17 @@ function App() {
                 <div className="composer-top-meta">
                   <span className="composer-inline-pill">{activeModelOption.label}</span>
                   {!isCompactViewport && <span className={`composer-inline-pill ${memoryPreviewEnabled ? '' : 'is-muted'}`}>Memoria {displayedContextSlots}/{CONTEXT_WINDOW_SIZE}</span>}
-                  <span className="composer-inline-pill">{isAIOnline ? 'Servicio activo' : 'Modo fallback'}</span>
+                  <span className={`composer-inline-pill ${envInfo.className}`}>{envInfo.label}</span>
                 </div>
               </div>
 
-              <div className={`input-wrapper ${isEmptyState ? 'input-wrapper-empty' : ''} ${isTyping ? 'input-wrapper-loading' : ''}`}>
+              <div className={`input-wrapper ${isTyping ? 'input-wrapper-loading' : ''}`}>
                 <textarea
                   ref={inputRef}
                   className="chat-input"
                   placeholder={composerPlaceholder}
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => { setInput(e.target.value); if (e.target.value.trim() && !isTyping) setMascotMood('listening'); else if (!e.target.value.trim() && !isTyping) setMascotMood('idle'); }}
                   onKeyDown={handleKeyDown}
                   onFocus={handleComposerFocus}
                   onBlur={handleComposerBlur}
@@ -833,6 +984,13 @@ function App() {
                   )}
                 </div>
 
+                <div className={`memory-pill ${isEphemeralMode ? 'memory-pill-on' : 'memory-pill-off'}`}>
+                  <span className="memory-pill-label">Efímero</span>
+                  <button type="button" className={`memory-toggle ${isEphemeralMode ? 'memory-toggle-on' : ''}`} aria-pressed={isEphemeralMode} onClick={() => setIsEphemeralMode((v) => !v)}>
+                    <span></span>
+                  </button>
+                </div>
+
                 <div className={`memory-pill ${memoryPreviewEnabled ? 'memory-pill-on' : 'memory-pill-off'}`}>
                   <span className="memory-pill-label">Memoria</span>
                   <button type="button" className={`memory-toggle ${memoryPreviewEnabled ? 'memory-toggle-on' : ''}`} aria-pressed={memoryPreviewEnabled} onClick={() => setMemoryPreviewEnabled((value) => !value)}>
@@ -861,3 +1019,5 @@ function App() {
 }
 
 export default App;
+
+

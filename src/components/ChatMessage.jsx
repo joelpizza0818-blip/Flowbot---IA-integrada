@@ -1,8 +1,8 @@
-import React, { memo, useState } from 'react';
+﻿import React, { memo, useState, useEffect, useRef } from 'react';
 import FlowLogo from './FlowLogo';
 import IntentIcon from './IntentIcon';
 
-const MODE_LABELS = { deep: 'Profundo', short: 'Rapido', normal: null };
+const MODE_LABELS = { deep: 'Profundo', short: 'Rápido', normal: null };
 
 const ACTION_CONFIG = {
   open_youtube: {
@@ -15,10 +15,10 @@ const ACTION_CONFIG = {
   },
   open_search: {
     iconName: 'buscar',
-    title: 'Busqueda preparada',
+    title: 'Búsqueda preparada',
     noQueryTitle: 'Buscador listo',
     btnLabel: 'Buscar en Google',
-    noQueryDescription: 'Puedes abrir Google para completar tu busqueda.',
+    noQueryDescription: 'Puedes abrir Google para completar tu búsqueda.',
     colorClass: 'action-google',
   },
   toggle_fullscreen: {
@@ -66,7 +66,7 @@ const ACTION_CONFIG = {
     title: 'Navegacion',
     noQueryTitle: 'Hacia abajo',
     btnLabel: null,
-    noQueryDescription: 'Desplazando al final de la conversacion.',
+    noQueryDescription: 'Desplazando al final de la conversación.',
     colorClass: 'action-system',
   },
   set_timer: {
@@ -327,8 +327,45 @@ function ActionCard({ action }) {
   );
 }
 
-function ChatMessage({ message, isLatest }) {
+function ChatMessage({ message, isLatest, onStatusChange }) {
   const isUser = message.sender === 'user';
+  const [ephemeralStatus, setEphemeralStatus] = useState('hidden'); // hidden, revealed, consumed
+  const bubbleRef = useRef(null);
+
+  useEffect(() => {
+    if (message.ephemeral && ephemeralStatus === 'revealed') {
+      const handleClickOutside = (e) => {
+        if (bubbleRef.current && !bubbleRef.current.contains(e.target)) {
+          setEphemeralStatus('consumed');
+          if (onStatusChange) onStatusChange('consumed');
+        }
+      };
+      
+      const timer = setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+      }, 100);
+
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('click', handleClickOutside);
+      };
+    }
+  }, [message.ephemeral, ephemeralStatus, onStatusChange]);
+
+  const handleReveal = () => {
+    if (ephemeralStatus === 'hidden') {
+      setEphemeralStatus('revealed');
+      if (onStatusChange) onStatusChange('revealed');
+    }
+  };
+
+  const handleConsume = (e) => {
+    e.stopPropagation();
+    if (ephemeralStatus !== 'consumed') {
+      setEphemeralStatus('consumed');
+      if (onStatusChange) onStatusChange('consumed');
+    }
+  };
 
   return (
     <div className={`chat-message ${isUser ? 'user-message' : 'bot-message'} ${isLatest ? 'message-enter' : ''}`}>
@@ -338,74 +375,116 @@ function ChatMessage({ message, isLatest }) {
         </div>
       )}
 
-      <div className={`message-bubble ${isUser ? 'user-bubble' : 'bot-bubble'}`}>
-        {!isUser && (
-          <div className="message-head">
-            <div className="message-author">
-              <span className="message-role">FlowBot</span>
+      <div 
+        ref={bubbleRef}
+        className={`message-bubble ${isUser ? 'user-bubble' : 'bot-bubble'} ${message.ephemeral && ephemeralStatus === 'hidden' ? 'ephemeral-hidden' : ''} ${message.ephemeral && ephemeralStatus === 'consumed' ? 'ephemeral-consumed' : ''}`}
+      >
+        {message.ephemeral && ephemeralStatus === 'hidden' ? (
+          <div className="ephemeral-placeholder" onClick={handleReveal}>
+            <div className="ephemeral-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2s-8 11-8 16c0 4.4 3.6 8 8 8s8-3.6 8-8c0-5-8-16-8-16z"/>
+                <path d="m9 15.2 2 2 4-4"/>
+              </svg>
             </div>
-            <div className="message-header-meta">
-              {!isUser && message.model && (
-                <span className="message-inline-chip">
-                  {message.model}
-                  {message.thinkingMode && message.thinkingMode !== 'normal' && MODE_LABELS[message.thinkingMode] && (
-                    <span className="message-chip-separator">{MODE_LABELS[message.thinkingMode]}</span>
-                  )}
-                </span>
-              )}
-              <span className="message-time">{message.time}</span>
+            <div className="ephemeral-text">
+              <span className="ephemeral-title">Mensaje Efímero</span>
+              <span className="ephemeral-desc">Toca para ver una sola vez</span>
             </div>
           </div>
-        )}
-
-        {message.text && (
-          <div className="message-copy">
-            {!isUser && message.iconName && (
-              <span className="message-type-icon"><IntentIcon name={message.iconName} size={16} /></span>
-            )}
-            <div className="message-text">{parseRichText(message.text)}</div>
+        ) : message.ephemeral && ephemeralStatus === 'consumed' ? (
+          <div className="ephemeral-consumed-placeholder">
+            <div className="ephemeral-consumed-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+            <span className="ephemeral-consumed-text">Mensaje Visto y Bloqueado</span>
           </div>
-        )}
-
-        {message.intents?.length > 0 && (
-          <div className="intents-container">
-            {message.intents.map((intent) => (
-              <div key={`${intent.id}-${intent.response}`} className="intent-card" style={{ '--intent-color': intent.color }}>
-                <div className="intent-header">
-                  <span className="intent-icon"><IntentIcon name={intent.iconName} size={18} /></span>
-                  <span className="intent-name">{intent.name}</span>
-                  <span className="intent-badge">{intent.matchedKeywords.length} match{intent.matchedKeywords.length > 1 ? 'es' : ''}</span>
-                </div>
-                <div className="intent-response">{parseRichText(intent.response)}</div>
-                <div className="intent-details">{parseRichText(intent.details)}</div>
+        ) : (
+          <>
+            {message.ephemeral && (
+              <div className="ephemeral-banner">
+                <span className="ephemeral-status-badge">Revelado</span>
+                <button type="button" className="ephemeral-close-btn" onClick={handleConsume} title="Cerrar y bloquear">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
               </div>
-            ))}
-          </div>
-        )}
+            )}
+            {!isUser && (
+              <div className="message-head">
+                <div className="message-author">
+                  <span className="message-role">FlowBot</span>
+                </div>
+                <div className="message-header-meta">
+                  {!isUser && message.model && (
+                    <span className="message-inline-chip">
+                      {message.model}
+                      {message.thinkingMode && message.thinkingMode !== 'normal' && MODE_LABELS[message.thinkingMode] && (
+                        <span className="message-chip-separator">{MODE_LABELS[message.thinkingMode]}</span>
+                      )}
+                    </span>
+                  )}
+                  <span className="message-time">{message.time}</span>
+                </div>
+              </div>
+            )}
 
-        {message.actions?.length > 0 && (
-          <div className="actions-container">
-            {message.actions.map((action, index) => (
-              <ActionCard key={`${action.intentId}-${action.action}-${index}`} action={action} />
-            ))}
-          </div>
-        )}
+            {message.text && (
+              <div className="message-copy">
+                {!isUser && message.iconName && (
+                  <span className="message-type-icon"><IntentIcon name={message.iconName} size={16} /></span>
+                )}
+                <div className="message-text">{parseRichText(message.text)}</div>
+              </div>
+            )}
 
-        {!isUser && message.fallbackReason && (
-          <div className="message-fallback-notice">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-              <line x1="12" y1="9" x2="12" y2="13" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-            {message.fallbackReason}
-          </div>
-        )}
+            {message.intents?.length > 0 && (
+              <div className="intents-container">
+                {message.intents.map((intent) => (
+                  <div key={`${intent.id}-${intent.response}`} className="intent-card" style={{ '--intent-color': intent.color }}>
+                    <div className="intent-header">
+                      <span className="intent-icon"><IntentIcon name={intent.iconName} size={18} /></span>
+                      <span className="intent-name">{intent.name}</span>
+                      <span className="intent-badge">{intent.matchedKeywords.length} match{intent.matchedKeywords.length > 1 ? 'es' : ''}</span>
+                    </div>
+                    <div className="intent-response">{parseRichText(intent.response)}</div>
+                    <div className="intent-details">{parseRichText(intent.details)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-        {isUser && <span className="message-time user-message-time">{message.time}</span>}
+            {message.actions?.length > 0 && (
+              <div className="actions-container">
+                {message.actions.map((action, index) => (
+                  <ActionCard key={`${action.intentId}-${action.action}-${index}`} action={action} />
+                ))}
+              </div>
+            )}
+
+            {!isUser && message.fallbackReason && (
+              <div className="message-fallback-notice">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                {message.fallbackReason}
+              </div>
+            )}
+
+            {isUser && <span className="message-time user-message-time">{message.time}</span>}
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 export default memo(ChatMessage);
+
