@@ -9,6 +9,7 @@ import {
 } from './chatbotLogic';
 import { CONTEXT_WINDOW_SIZE, getContextUsage } from './contextPrompt';
 import './App.css';
+import './flowbot.animations.css';
 
 const MOBILE_BREAKPOINT        = 768;
 const IDLE_TIMEOUT_MS          = 15000;
@@ -141,22 +142,25 @@ function App() {
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [islandOpen, setIslandOpen] = useState(false);
   const [islandX, setIslandX] = useState(() => Math.max(88, Math.round(window.innerWidth / 2)));
+  const [isGreetingWaveActive, setIsGreetingWaveActive] = useState(false);
 
   // Mascot mood state
   const [mascotMood, setMascotMood] = useState('idle'); // idle | listening | thinking | celebrating | sleeping | excited | coveringEyes | shh
   const [justReceivedResponse, setJustReceivedResponse] = useState(false);
   const idleTimerRef = useRef(null);
+  const hasPlayedGreetingRef = useRef(false);
   const envInfo = getEnvironmentInfo();
+  const hasConversation = messages.length > 1;
 
   const handleEphemeralStatus = useCallback((status) => {
     if (status === 'revealed') {
       setMascotMood('coveringEyes');
     } else if (status === 'consumed') {
       setMascotMood('shh');
-      // Auto revert 'shh' after 2.5s
+      // Auto revert 'shh' after 3s
       setTimeout(() => {
         setMascotMood((current) => current === 'shh' ? 'idle' : current);
-      }, 2500);
+      }, 3000);
     }
   }, []);
 
@@ -235,6 +239,21 @@ function App() {
     if (thinkingDropdownOpen || modelDropdownOpen) document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
   }, [thinkingDropdownOpen, modelDropdownOpen]);
+
+  useEffect(() => {
+    if (!hasConversation || hasPlayedGreetingRef.current) return;
+    hasPlayedGreetingRef.current = true;
+    const greetingStartTimerId = window.setTimeout(() => {
+      setIsGreetingWaveActive(true);
+    }, 0);
+    const greetingTimerId = window.setTimeout(() => {
+      setIsGreetingWaveActive(false);
+    }, 3600);
+    return () => {
+      window.clearTimeout(greetingStartTimerId);
+      window.clearTimeout(greetingTimerId);
+    };
+  }, [hasConversation]);
 
   // â”€â”€ Mascot mood: idle â†’ sleeping after 30s â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const resetIdleTimer = useCallback(() => {
@@ -343,7 +362,13 @@ function App() {
     window.setTimeout(() => { if (document.activeElement !== inputRef.current) setIsComposerFocused(false); }, 120);
   }
 
-  function handleClearChat() { setMessages([createWelcomeMessage()]); nextId.current = 1; setIslandOpen(false); }
+  function handleClearChat() {
+    setMessages([createWelcomeMessage()]);
+    nextId.current = 1;
+    setIslandOpen(false);
+    setIsGreetingWaveActive(false);
+    hasPlayedGreetingRef.current = false;
+  }
 
   function handleIslandPointerDown(e) {
     if (islandOpen) return;
@@ -377,7 +402,7 @@ function App() {
     const trimmed = timeInput.trim();
     if (!trimmed) return;
     let seconds = 0;
-    const m = trimmed.match(/(\d+(?:[.,]\d+)?)\s*(s|seg|segúndo|minuto|min|m|h|hora)?/i);
+    const m = trimmed.match(/(\d+(?:[.,]\d+)?)\s*(s|seg|segundo|minuto|min|m|h|hora)?/i);
     if (m) {
       const val = parseFloat(m[1].replace(',', '.'));
       const unit = (m[2] || 's').toLowerCase();
@@ -468,7 +493,6 @@ function App() {
   ];
 
   const isCompactViewport = viewportMetrics.isCompact;
-  const hasConversation = messages.length > 1;
   const isEmptyState = !hasConversation;
   const visibleMessages = messages;
   const { usedSlots: displayedContextSlots } = getContextUsage(messages);
@@ -688,7 +712,7 @@ function App() {
                 size={28}
                 animated={true}
                 trackCursor={true}
-                wave={!islandOpen && !isTyping && hasConversation}
+                wave={isGreetingWaveActive && !islandOpen && !isTyping}
                 thinking={mascotMood === 'thinking'}
                 celebrating={mascotMood === 'celebrating'}
                 sleeping={mascotMood === 'sleeping'}
@@ -710,7 +734,7 @@ function App() {
                   size={22}
                   animated={true}
                   trackCursor={true}
-                  wave={hasConversation}
+                  wave={isGreetingWaveActive}
                   thinking={mascotMood === 'thinking'}
                   celebrating={mascotMood === 'celebrating'}
                   sleeping={mascotMood === 'sleeping'}

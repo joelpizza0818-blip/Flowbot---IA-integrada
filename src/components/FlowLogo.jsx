@@ -23,6 +23,7 @@ export default function FlowLogo({
     bodyX: 0,
     bodyY: 0,
     bodyRotate: 0,
+    bodyPitch: 0,
   });
 
   // Eye-tracking: follow cursor on desktop
@@ -36,21 +37,29 @@ export default function FlowLogo({
       const cy = rect.top + rect.height / 2;
       const dx = e.clientX - cx;
       const dy = e.clientY - cy;
-
-      const normalizedX = Math.max(-1, Math.min(1, dx / (rect.width * 0.45)));
-      const normalizedY = Math.max(-1, Math.min(1, dy / (rect.height * 0.45)));
+      const distance = Math.hypot(dx, dy);
+      const innerRange = Math.max(rect.width, rect.height) * 0.55;
+      const outerRange = Math.max(rect.width, rect.height) * 6.4;
+      const rangeFactor = distance <= innerRange
+        ? 1
+        : distance >= outerRange
+          ? 0
+          : 1 - ((distance - innerRange) / (outerRange - innerRange));
+      const normalizedX = Math.max(-1, Math.min(1, dx / (rect.width * 0.6))) * rangeFactor;
+      const normalizedY = Math.max(-1, Math.min(1, dy / (rect.height * 0.6))) * rangeFactor;
 
       setCursorPose({
-        eyeX: normalizedX * -3.6,
-        eyeY: normalizedY * 2.8,
-        bodyX: normalizedX * -5.8,
-        bodyY: normalizedY * 3.8,
-        bodyRotate: normalizedX * -9.5,
+        eyeX: normalizedX * -3.4,
+        eyeY: normalizedY * 3.4,
+        bodyX: normalizedX * -5.1,
+        bodyY: normalizedY * 4.9,
+        bodyRotate: normalizedX * -8.8,
+        bodyPitch: normalizedY * -4.1,
       });
     };
 
     const resetPose = () => {
-      setCursorPose({ eyeX: 0, eyeY: 0, bodyX: 0, bodyY: 0, bodyRotate: 0 });
+      setCursorPose({ eyeX: 0, eyeY: 0, bodyX: 0, bodyY: 0, bodyRotate: 0, bodyPitch: 0 });
     };
 
     window.addEventListener('mousemove', handleMove, { passive: true });
@@ -82,12 +91,12 @@ export default function FlowLogo({
   ].filter(Boolean).join(' ');
 
   const eyeTransform = sleeping || coveringEyes
-    ? 'translate(0, 0)'
+    ? 'translate(0px, 0px)'
     : `translate(${cursorPose.eyeX}px, ${cursorPose.eyeY}px)`;
 
   const bodyTransform = sleeping
-    ? 'translate(0, 0)'
-    : `translate(${cursorPose.bodyX}px, ${cursorPose.bodyY}px) rotate(${cursorPose.bodyRotate}deg)`;
+    ? 'translate(0px, 0px)'
+    : `translate(${cursorPose.bodyX}px, ${cursorPose.bodyY}px) rotate(${cursorPose.bodyRotate}deg) skewX(${cursorPose.bodyPitch}deg)`;
 
   // Unique filter IDs to avoid clashes when multiple logos are rendered
   const uid = useId().replace(/:/g, "");
@@ -183,7 +192,6 @@ export default function FlowLogo({
         <circle cx="23" cy="18" r="2.2" fill="#66e1ff" className="flow-logo-antenna-tip flow-logo-antenna-tip-left" />
         <circle cx="77" cy="18" r="2.2" fill="#66e1ff" className="flow-logo-antenna-tip flow-logo-antenna-tip-right" />
       </g>
-      </g>
 
       {/* Eyes */}
       {sleeping ? (
@@ -278,6 +286,7 @@ export default function FlowLogo({
       )}
 
       {/* Mascot mouth removed per user request */}
+      </g>
     </svg>
   );
 }
