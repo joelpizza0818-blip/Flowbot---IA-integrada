@@ -16,7 +16,7 @@ import './App.css';
 import './flowbot.animations.css';
 
 const MOBILE_BREAKPOINT        = 768;
-const IDLE_TIMEOUT_MS          = 15000;
+const IDLE_TIMEOUT_MS          = 10000;
 
 function getEnvironmentInfo({ backendAvailable, isOnline }) {
   const host = window.location.hostname;
@@ -72,6 +72,10 @@ function getConnectivityInfo() {
     className: isOnline ? 'is-online' : 'is-offline',
     isOnline,
   };
+}
+
+function randomBetween(min, max) {
+  return Math.floor(min + Math.random() * (max - min + 1));
 }
 
 function createWelcomeMessage() {
@@ -181,22 +185,33 @@ function App() {
   const [isGreetingWaveActive, setIsGreetingWaveActive] = useState(false);
 
   // Mascot mood state
-  const [mascotMood, setMascotMood] = useState('idle'); // idle | listening | thinking | celebrating | sleeping | excited | coveringEyes | shh
+  const [mascotMood, setMascotMood] = useState('idle'); // idle | listening | searching | thinking | celebrating | sleeping | excited | bored | lookingDown | coveringEyes | shh
   const [justReceivedResponse, setJustReceivedResponse] = useState(false);
   const idleTimerRef = useRef(null);
+  const mascotMoodRef = useRef('idle');
+  const shhTimerRef = useRef(null);
+  const coveringEyesTimerRef = useRef(null);
+  const sendSearchTimerRef = useRef(null);
+  const sendThinkingTimerRef = useRef(null);
+  const ambientMoodStartTimerRef = useRef(null);
+  const ambientMoodEndTimerRef = useRef(null);
   const hasPlayedGreetingRef = useRef(false);
   const envInfo = getEnvironmentInfo({ backendAvailable, isOnline: connectivityInfo.isOnline });
   const hasConversation = messages.length > 1;
 
   const handleEphemeralStatus = useCallback((status) => {
     if (status === 'revealed') {
+      if (coveringEyesTimerRef.current) window.clearTimeout(coveringEyesTimerRef.current);
       setMascotMood('coveringEyes');
+      coveringEyesTimerRef.current = window.setTimeout(() => {
+        setMascotMood((current) => (current === 'coveringEyes' ? 'idle' : current));
+      }, 1800);
     } else if (status === 'consumed') {
+      if (shhTimerRef.current) window.clearTimeout(shhTimerRef.current);
       setMascotMood('shh');
-      // Auto revert 'shh' after 3s
-      setTimeout(() => {
+      shhTimerRef.current = window.setTimeout(() => {
         setMascotMood((current) => current === 'shh' ? 'idle' : current);
-      }, 3000);
+      }, 2600);
     }
   }, []);
 
@@ -221,6 +236,44 @@ function App() {
   const sortChatsByDate = useCallback((chats) => (
     [...chats].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
   ), []);
+
+  const clearSendMoodTimers = useCallback(() => {
+    if (sendSearchTimerRef.current) {
+      window.clearTimeout(sendSearchTimerRef.current);
+      sendSearchTimerRef.current = null;
+    }
+    if (sendThinkingTimerRef.current) {
+      window.clearTimeout(sendThinkingTimerRef.current);
+      sendThinkingTimerRef.current = null;
+    }
+  }, []);
+
+  const clearAmbientMoodStartTimer = useCallback(() => {
+    if (ambientMoodStartTimerRef.current) {
+      window.clearTimeout(ambientMoodStartTimerRef.current);
+      ambientMoodStartTimerRef.current = null;
+    }
+  }, []);
+
+  const clearAmbientMoodTimers = useCallback(() => {
+    clearAmbientMoodStartTimer();
+    if (ambientMoodEndTimerRef.current) {
+      window.clearTimeout(ambientMoodEndTimerRef.current);
+      ambientMoodEndTimerRef.current = null;
+    }
+  }, [clearAmbientMoodStartTimer]);
+
+  useEffect(() => {
+    mascotMoodRef.current = mascotMood;
+  }, [mascotMood]);
+
+  useEffect(() => () => {
+    if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
+    if (shhTimerRef.current) window.clearTimeout(shhTimerRef.current);
+    if (coveringEyesTimerRef.current) window.clearTimeout(coveringEyesTimerRef.current);
+    clearSendMoodTimers();
+    clearAmbientMoodTimers();
+  }, [clearAmbientMoodTimers, clearSendMoodTimers]);
 
 
 
@@ -398,14 +451,23 @@ function App() {
     };
   }, [hasConversation]);
 
-  // â”€â”€ Mascot mood: idle â†’ sleeping after 30s â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Mascot mood: idle â†’ sleeping after 10s â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const resetIdleTimer = useCallback(() => {
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    if (mascotMood === 'sleeping') setMascotMood('idle');
-    idleTimerRef.current = setTimeout(() => {
-      setMascotMood((prev) => (prev === 'idle' ? 'sleeping' : prev));
+    if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
+    clearAmbientMoodStartTimer();
+    setMascotMood((current) => (
+      current === 'sleeping' || current === 'bored' || current === 'lookingDown'
+        ? 'idle'
+        : current
+    ));
+    idleTimerRef.current = window.setTimeout(() => {
+      setMascotMood((prev) => (
+        ['coveringEyes', 'shh', 'celebrating', 'excited', 'thinking', 'searching'].includes(prev)
+          ? prev
+          : 'sleeping'
+      ));
     }, IDLE_TIMEOUT_MS);
-  }, [mascotMood]);
+  }, [clearAmbientMoodStartTimer]);
 
   useEffect(() => {
     const bootstrapTimerId = window.setTimeout(() => {
@@ -416,16 +478,48 @@ function App() {
     wakeEvents.forEach((ev) => window.addEventListener(ev, wakeHandler, { passive: true }));
     return () => {
       window.clearTimeout(bootstrapTimerId);
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
       wakeEvents.forEach((ev) => window.removeEventListener(ev, wakeHandler));
     };
   }, [resetIdleTimer]);
+
+  // Random ambient moods while idle so the mascot feels alive.
+  useEffect(() => {
+    const canRunAmbientMood = mascotMood === 'idle' && !isTyping && !input.trim();
+
+    if (!canRunAmbientMood) {
+      clearAmbientMoodStartTimer();
+      return;
+    }
+
+    if (ambientMoodStartTimerRef.current || ambientMoodEndTimerRef.current) return;
+
+    ambientMoodStartTimerRef.current = window.setTimeout(() => {
+      ambientMoodStartTimerRef.current = null;
+      if (mascotMoodRef.current !== 'idle') return;
+
+      const nextMood = Math.random() < 0.58 ? 'lookingDown' : 'bored';
+      const holdMs = nextMood === 'bored'
+        ? randomBetween(2800, 4600)
+        : randomBetween(1700, 3200);
+
+      setMascotMood(nextMood);
+      ambientMoodEndTimerRef.current = window.setTimeout(() => {
+        ambientMoodEndTimerRef.current = null;
+        setMascotMood((current) => (current === nextMood ? 'idle' : current));
+      }, holdMs);
+    }, randomBetween(6500, 14500));
+  }, [clearAmbientMoodStartTimer, input, isTyping, mascotMood]);
 
   // Mascot reacts to typing state
   useEffect(() => {
     if (isTyping) {
       const thinkingTimerId = window.setTimeout(() => {
-        setMascotMood('thinking');
+        setMascotMood((current) => (
+          current === 'excited' || current === 'searching'
+            ? current
+            : 'thinking'
+        ));
       }, 0);
       return () => window.clearTimeout(thinkingTimerId);
     } else if (justReceivedResponse) {
@@ -491,41 +585,72 @@ function App() {
     setInput('');
     setIsTyping(true);
     setIslandOpen(false);
+    clearSendMoodTimers();
     setMascotMood('excited'); // brief excited on send
-    setTimeout(() => setMascotMood('thinking'), 600);
+    sendSearchTimerRef.current = window.setTimeout(() => {
+      setMascotMood((current) => (current === 'excited' ? 'searching' : current));
+    }, 420);
+    sendThinkingTimerRef.current = window.setTimeout(() => {
+      setMascotMood((current) => (
+        current === 'excited' || current === 'searching'
+          ? 'thinking'
+          : current
+      ));
+    }, 1580);
 
     (async () => {
-      const response    = await generateBotResponse(trimmed, recentConversation, preferredModel, thinkingMode);
+      try {
+        const response = await generateBotResponse(trimmed, recentConversation, preferredModel, thinkingMode);
 
-      const botMsg = {
-        id:            createMessageId(),
-        sender:        'bot',
-        text:          response.text,
-        iconName:      response.iconName,
-        intents:       response.intents,
-        actions:       response.actions || [],
-        time:          getTimeString(),
-        model:         response.model,
-        fallbackReason: response.fallbackReason,
-        thinkingMode:  response.thinkingMode,
-        ephemeral:     isEphemeralMode,
-      };
+        const botMsg = {
+          id:            createMessageId(),
+          sender:        'bot',
+          text:          response.text,
+          iconName:      response.iconName,
+          intents:       response.intents,
+          actions:       response.actions || [],
+          time:          getTimeString(),
+          model:         response.model,
+          fallbackReason: response.fallbackReason,
+          thinkingMode:  response.thinkingMode,
+          ephemeral:     isEphemeralMode,
+        };
 
-      setMessages((prev) => [...prev, botMsg]);
-      void persistMessage(botMsg);
-      setIsTyping(false);
-      setJustReceivedResponse(true);
+        setMessages((prev) => [...prev, botMsg]);
+        void persistMessage(botMsg);
+        setJustReceivedResponse(true);
 
-      if (botMsg.actions?.length) {
-        botMsg.actions.forEach(({ action }) => {
-          if      (action === 'toggle_fullscreen') { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(console.error); else document.exitFullscreen(); }
-          else if (action === 'reload_page')   setTimeout(() => window.location.reload(), 1500);
-          else if (action === 'print_page')    setTimeout(() => window.print(), 1000);
-          else if (action === 'scroll_top')    window.scrollTo({ top: 0, behavior: 'smooth' });
-          else if (action === 'scroll_bottom') window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-          else if (action === 'toggle_sidebar') setSidebarOpen((p) => !p);
-          else if (action === 'set_timer')     { setTimerModalOpen(true); setTimerModalValue(''); }
-        });
+        if (botMsg.actions?.length) {
+          botMsg.actions.forEach(({ action }) => {
+            if      (action === 'toggle_fullscreen') { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(console.error); else document.exitFullscreen(); }
+            else if (action === 'reload_page')   setTimeout(() => window.location.reload(), 1500);
+            else if (action === 'print_page')    setTimeout(() => window.print(), 1000);
+            else if (action === 'scroll_top')    window.scrollTo({ top: 0, behavior: 'smooth' });
+            else if (action === 'scroll_bottom') window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            else if (action === 'toggle_sidebar') setSidebarOpen((p) => !p);
+            else if (action === 'set_timer')     { setTimerModalOpen(true); setTimerModalValue(''); }
+          });
+        }
+      } catch (error) {
+        console.error('Error generating bot response:', error);
+        const fallbackMsg = {
+          id: createMessageId(),
+          sender: 'bot',
+          text: 'Tuve un problema temporal al generar la respuesta. Intenta de nuevo en unos segundos.',
+          iconName: 'alert',
+          intents: [],
+          actions: [],
+          time: getTimeString(),
+          fallbackReason: 'runtime_error',
+          thinkingMode,
+          ephemeral: isEphemeralMode,
+        };
+        setMessages((prev) => [...prev, fallbackMsg]);
+        void persistMessage(fallbackMsg);
+        setJustReceivedResponse(true);
+      } finally {
+        clearSendMoodTimers();
+        setIsTyping(false);
       }
     })();
   }
@@ -795,6 +920,23 @@ function App() {
   const composerHint = isCompactViewport
     ? programCopy.hintCompact
     : programCopy.hintDesktop;
+  const isGreetingWaveVisible = isGreetingWaveActive && !isTyping && mascotMood === 'idle';
+  const islandMascotStateProps = {
+    animated: true,
+    trackCursor: !isCompactViewport,
+    wave: isGreetingWaveVisible,
+    thinking: mascotMood === 'thinking',
+    celebrating: mascotMood === 'celebrating',
+    sleeping: mascotMood === 'sleeping',
+    excited: mascotMood === 'excited',
+    listening: mascotMood === 'listening',
+    coveringEyes: mascotMood === 'coveringEyes',
+    shh: mascotMood === 'shh',
+    reading: mascotMood === 'searching' || mascotMood === 'thinking' || mascotMood === 'listening',
+    searching: mascotMood === 'searching',
+    bored: mascotMood === 'bored',
+    lookingDown: mascotMood === 'lookingDown',
+  };
 
   async function handleAuthLogin(credentials) {
     try {
@@ -1139,16 +1281,7 @@ function App() {
               <span className="dynamic-island-glow-ring" />
               <FlowLogo
                 size={28}
-                animated={true}
-                trackCursor={!isCompactViewport}
-                wave={isGreetingWaveActive && !islandOpen && !isTyping}
-                thinking={mascotMood === 'thinking'}
-                celebrating={mascotMood === 'celebrating'}
-                sleeping={mascotMood === 'sleeping'}
-                excited={mascotMood === 'excited'}
-                listening={mascotMood === 'listening'}
-                coveringEyes={mascotMood === 'coveringEyes'}
-                shh={mascotMood === 'shh'}
+                {...islandMascotStateProps}
               />
             </button>
           ) : (
@@ -1161,16 +1294,7 @@ function App() {
               >
                 <FlowLogo
                   size={22}
-                  animated={true}
-                  trackCursor={!isCompactViewport}
-                  wave={isGreetingWaveActive}
-                  thinking={mascotMood === 'thinking'}
-                  celebrating={mascotMood === 'celebrating'}
-                  sleeping={mascotMood === 'sleeping'}
-                  excited={mascotMood === 'excited'}
-                  listening={mascotMood === 'listening'}
-                  coveringEyes={mascotMood === 'coveringEyes'}
-                  shh={mascotMood === 'shh'}
+                  {...islandMascotStateProps}
                 />
                 <div className="dynamic-island-copy">
                   <span className="dynamic-island-name">FlowBot</span>

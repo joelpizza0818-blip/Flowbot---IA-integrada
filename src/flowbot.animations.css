@@ -12,8 +12,12 @@
   transition: transform 120ms var(--flowbot-track-ease);
 }
 
-.flow-logo-reading .flow-logo-magnifier {
+.flow-logo-reading:not(.flow-logo-searching) .flow-logo-magnifier {
   animation: mascotRead 1.45s cubic-bezier(0.42, 0, 0.2, 1) infinite;
+}
+
+.flow-logo-searching .flow-logo-magnifier {
+  animation: magnifierSearchSweep 1.12s cubic-bezier(0.24, 0.8, 0.2, 1) infinite;
 }
 
 .flow-logo-sleeping .flow-logo-zzz {

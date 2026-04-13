@@ -11,6 +11,9 @@ export default function FlowLogo({
   sleeping = false,
   excited = false,
   listening = false,
+  searching = false,
+  bored = false,
+  lookingDown = false,
   coveringEyes = false,
   shh = false,
   trackCursor = false,
@@ -84,19 +87,37 @@ export default function FlowLogo({
     sleeping ? 'flow-logo-sleeping' : '',
     excited ? 'flow-logo-excited' : '',
     listening ? 'flow-logo-listening' : '',
+    searching ? 'flow-logo-searching' : '',
+    bored ? 'flow-logo-bored' : '',
+    lookingDown ? 'flow-logo-looking-down' : '',
     coveringEyes ? 'flow-logo-covering-eyes' : '',
     shh ? 'flow-logo-shh' : '',
     isError ? 'flow-logo-error' : '',
     className,
   ].filter(Boolean).join(' ');
 
+  const eyeOffsetX = lookingDown ? 0 : cursorPose.eyeX;
+  const eyeOffsetY = lookingDown ? 3.2 : bored ? 1.6 : cursorPose.eyeY;
   const eyeTransform = sleeping || coveringEyes
     ? 'translate(0px, 0px)'
-    : `translate(${cursorPose.eyeX}px, ${cursorPose.eyeY}px)`;
+    : `translate(${eyeOffsetX}px, ${eyeOffsetY}px)`;
+
+  const bodyX = lookingDown ? cursorPose.bodyX * 0.36 : cursorPose.bodyX;
+  const bodyY = lookingDown
+    ? cursorPose.bodyY + 2.2
+    : bored
+      ? cursorPose.bodyY + 1
+      : cursorPose.bodyY;
+  const bodyRotate = lookingDown
+    ? (cursorPose.bodyRotate * 0.35) - 2.2
+    : bored
+      ? (cursorPose.bodyRotate * 0.4) - 1
+      : cursorPose.bodyRotate;
+  const bodyPitch = lookingDown ? cursorPose.bodyPitch * 0.25 : cursorPose.bodyPitch;
 
   const bodyTransform = sleeping
     ? 'translate(0px, 0px)'
-    : `translate(${cursorPose.bodyX}px, ${cursorPose.bodyY}px) rotate(${cursorPose.bodyRotate}deg) skewX(${cursorPose.bodyPitch}deg)`;
+    : `translate(${bodyX}px, ${bodyY}px) rotate(${bodyRotate}deg) skewX(${bodyPitch}deg)`;
 
   // Unique filter IDs to avoid clashes when multiple logos are rendered
   const uid = useId().replace(/:/g, "");
@@ -252,9 +273,11 @@ export default function FlowLogo({
       {/* Magnifier (reading mode) */}
       {reading && (
         <g className="flow-logo-magnifier">
-          <circle cx="70" cy="31" r="8.5" fill="rgba(139, 232, 255, 0.14)" stroke="#c7f5ff" strokeWidth="2.8" />
-          <circle cx="70" cy="31" r="4.2" fill="rgba(255, 255, 255, 0.08)" />
-          <path d="M76.5 37.5 L83 44" stroke="#c7f5ff" strokeWidth="2.8" strokeLinecap="round" />
+          <circle cx="70" cy="31" r="8.5" fill="rgba(139, 232, 255, 0.14)" stroke="#c7f5ff" strokeWidth="2.8" className="flow-logo-magnifier-lens-ring" />
+          <circle cx="70" cy="31" r="5.1" fill="rgba(156, 243, 255, 0.1)" className="flow-logo-magnifier-lens-core" />
+          <circle cx="67.2" cy="28.4" r="1.65" fill="rgba(255, 255, 255, 0.72)" className="flow-logo-magnifier-lens-highlight" />
+          <path d="M76.5 37.5 L83 44" stroke="#c7f5ff" strokeWidth="2.8" strokeLinecap="round" className="flow-logo-magnifier-handle" />
+          <path d="M65.8 31.2 H74.4" stroke="rgba(177, 245, 255, 0.85)" strokeWidth="1.5" strokeLinecap="round" className="flow-logo-magnifier-scan-line" />
         </g>
       )}
 
@@ -282,6 +305,14 @@ export default function FlowLogo({
           {/* Bubble body attached to antenna, scaled up and protruding */}
           <path d="M68 20 Q95 -10 115 5 Q135 25 105 35 L82 35 L80 25 Z" fill="#ffffff" opacity="0.95" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.15))" />
           <text x="79" y="24" fontSize="15" fontWeight="900" fill={`url(#shhGrad_${uid})`}>Shh...</text>
+        </g>
+      )}
+
+      {bored && (
+        <g className="flow-logo-bored-dots">
+          <circle cx="68" cy="22" r="0.8" fill="#9befff" className="flow-logo-bored-dot bd1" />
+          <circle cx="74" cy="19" r="0.8" fill="#9befff" className="flow-logo-bored-dot bd2" />
+          <circle cx="80" cy="16" r="0.8" fill="#9befff" className="flow-logo-bored-dot bd3" />
         </g>
       )}
 

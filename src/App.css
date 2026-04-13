@@ -163,6 +163,45 @@ textarea {
   75% { transform: translate3d(-0.5px, 1px, 0) rotate(-5deg) scale(1.02); }
 }
 
+@keyframes magnifierSearchSweep {
+  0% { transform: translate3d(0, 0, 0) rotate(-4deg) scale(1.04); }
+  18% { transform: translate3d(1.6px, -1.4px, 0) rotate(9deg) scale(1.07); }
+  36% { transform: translate3d(-2.4px, 0.6px, 0) rotate(-12deg) scale(1.08); }
+  52% { transform: translate3d(2.1px, 0.2px, 0) rotate(7deg) scale(1.06); }
+  70% { transform: translate3d(-1.8px, -1.2px, 0) rotate(-8deg) scale(1.08); }
+  100% { transform: translate3d(0, 0, 0) rotate(-4deg) scale(1.04); }
+}
+
+@keyframes magnifierLensPulse {
+  0%, 100% { opacity: 0.78; }
+  50% { opacity: 1; }
+}
+
+@keyframes magnifierScanLine {
+  0% { opacity: 0.3; transform: translateX(-2px); }
+  50% { opacity: 1; transform: translateX(2px); }
+  100% { opacity: 0.3; transform: translateX(-2px); }
+}
+
+@keyframes mascotBored {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-0.4deg) scale(1); }
+  30% { transform: translate3d(0, 1.3px, 0) rotate(-2.2deg) scale(0.992); }
+  60% { transform: translate3d(0.5px, 0.7px, 0) rotate(-1.2deg) scale(0.996); }
+}
+
+@keyframes mascotLookDown {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-1.4deg) scale(1); }
+  38% { transform: translate3d(0, 2.4px, 0) rotate(-4deg) scale(0.988); }
+  72% { transform: translate3d(0.4px, 1.6px, 0) rotate(-2.7deg) scale(0.993); }
+}
+
+@keyframes boredDotFloat {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.8); }
+  25% { opacity: 0.95; transform: translate(0, -2px) scale(1); }
+  65% { opacity: 0.55; transform: translate(0, -5px) scale(0.92); }
+  100% { opacity: 0; transform: translate(0, -7px) scale(0.8); }
+}
+
 @keyframes mascotWave {
   0%, 100% { transform: rotate(0deg) translateY(0); }
   18% { transform: rotate(20deg) translateY(-1px); }
@@ -611,13 +650,38 @@ textarea {
 .flow-logo-pupil {
   opacity: 0.7;
   transition: opacity 0.2s;
+  transform-origin: center;
+  transform-box: fill-box;
 }
 
 .flow-logo-magnifier {
-  animation: mascotRead 1.45s cubic-bezier(0.42, 0, 0.2, 1) infinite;
+  animation: mascotRead 1.2s cubic-bezier(0.42, 0, 0.2, 1) infinite;
   transform-origin: 70px 31px;
   filter: drop-shadow(0 0 12px rgba(139, 232, 255, 0.55));
   will-change: transform;
+}
+
+.flow-logo-magnifier-lens-ring {
+  opacity: 0.94;
+}
+
+.flow-logo-magnifier-lens-core {
+  animation: magnifierLensPulse 1.1s ease-in-out infinite;
+  transform-origin: 70px 31px;
+}
+
+.flow-logo-magnifier-lens-highlight {
+  animation: magnifierLensPulse 0.9s ease-in-out infinite;
+  transform-origin: 67.2px 28.4px;
+}
+
+.flow-logo-magnifier-handle {
+  stroke-linecap: round;
+}
+
+.flow-logo-magnifier-scan-line {
+  animation: magnifierScanLine 0.95s ease-in-out infinite;
+  transform-origin: 70px 31.2px;
 }
 
 .flow-logo-hand {
@@ -867,6 +931,77 @@ textarea {
 
 .flow-logo-listening .flow-logo-aura {
   fill: rgba(102, 225, 255, 0.1);
+}
+
+.flow-logo-searching .flow-logo-body {
+  animation: mascotThink 0.72s ease-in-out infinite;
+}
+
+.flow-logo-searching .flow-logo-aura {
+  fill: rgba(115, 239, 255, 0.16);
+  animation: auraGlowThinking 0.86s ease-in-out infinite;
+}
+
+.flow-logo-searching .flow-logo-eye {
+  animation: none;
+  filter: drop-shadow(0 0 12px rgba(115, 239, 255, 0.95));
+}
+
+.flow-logo-searching .flow-logo-magnifier {
+  animation: magnifierSearchSweep 1.12s cubic-bezier(0.24, 0.8, 0.2, 1) infinite;
+}
+
+.flow-logo-searching .flow-logo-wing-right {
+  animation: mascotRead 1.1s ease-in-out infinite;
+}
+
+.flow-logo-bored .flow-logo-body {
+  animation: mascotBored 3.2s ease-in-out infinite;
+}
+
+.flow-logo-bored .flow-logo-aura {
+  fill: rgba(122, 190, 255, 0.07);
+  animation: auraGlow 5.5s ease-in-out infinite;
+}
+
+.flow-logo-bored .flow-logo-eye {
+  animation: none;
+  transform: scaleY(0.5);
+  opacity: 0.82;
+  filter: drop-shadow(0 0 6px rgba(109, 255, 179, 0.5));
+}
+
+.flow-logo-bored .flow-logo-pupil {
+  transform: translateY(1.8px);
+  opacity: 0.55;
+}
+
+.flow-logo-bored-dots .flow-logo-bored-dot {
+  animation: boredDotFloat 1.6s ease-in-out infinite;
+}
+
+.flow-logo-bored-dots .flow-logo-bored-dot.bd2 { animation-delay: 0.18s; }
+.flow-logo-bored-dots .flow-logo-bored-dot.bd3 { animation-delay: 0.36s; }
+
+.flow-logo-looking-down .flow-logo-body {
+  animation: mascotLookDown 2.5s ease-in-out infinite;
+}
+
+.flow-logo-looking-down .flow-logo-aura {
+  fill: rgba(102, 225, 255, 0.07);
+}
+
+.flow-logo-looking-down .flow-logo-eye {
+  animation: none;
+  filter: drop-shadow(0 0 9px rgba(109, 255, 179, 0.74));
+}
+
+.flow-logo-looking-down .flow-logo-antenna-left {
+  animation-duration: 3.4s;
+}
+
+.flow-logo-looking-down .flow-logo-antenna-right {
+  animation-duration: 3.6s;
 }
 
 .flow-logo-wing-right {
@@ -2921,6 +3056,10 @@ textarea {
   .flow-logo-sparkle,
   .flow-logo-z,
   .flow-logo-think-dot,
+  .flow-logo-bored-dot,
+  .flow-logo-magnifier-lens-core,
+  .flow-logo-magnifier-lens-highlight,
+  .flow-logo-magnifier-scan-line,
   .dynamic-island-glow-ring,
   .hero-env-dot {
     animation: none !important;
