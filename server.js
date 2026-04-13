@@ -3,6 +3,8 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
+import crypto from 'crypto';
+import { getDbPool, getDbInfo, sql } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,6 +12,10 @@ const distDir = path.join(__dirname, 'dist');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
+
+const memoryUsers = new Map();
+const memoryChats = new Map();
+const memoryMessages = new Map();
 
 const GEMINI_API_KEYS = [
   process.env.GEMINI_API_KEY || '',
@@ -58,19 +64,219 @@ const MODEL_GROUPS = {
 };
 
 const envOrigins = (process.env.CORS_ORIGINS || '').split(',').map((value) => value.trim()).filter(Boolean);
-const allowedOrigins = new Set(['http://localhost:5173', 'http://localhost:4173', ...envOrigins]);
+const allowedOrigins = new Set(['http://localhost:5173', 'http://localhost:4173','http://localhost:3000', ...envOrigins]);
 
 app.use(cors({
   origin: (origin, cb) => {
     if (!origin || allowedOrigins.has(origin) || envOrigins.includes('*')) cb(null, true);
     else cb(new Error(`CORS: origen no permitido -> ${origin}`));
   },
-  methods: ['GET', 'POST', 'OPTIONS'],
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
 }));
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(distDir, { index: false }));
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 120000, 32, 'sha256').toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  const [salt, hash] = String(storedHash || '').split(':');
+  if (!salt || !hash) return false;
+  const candidate = crypto.pbkdf2Sync(password, salt, 120000, 32, 'sha256').toString('hex');
+  const left = Buffer.from(hash, 'hex');
+  const right = Buffer.from(candidate, 'hex');
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+async function isPersistenceReady() {
+  const pool = await getDbPool();
+  if (pool) return true;
+  return false;
+}
+
+async function registerUser({ name, email, password }) {
+  const pool = await getDbPool();
+  if (!pool) {
+    const id = `local-${crypto.randomUUID()}`;
+    const user = {
+      id,
+      name,
+      email,
+      passwordHash: hashPassword(password),
+      createdAt: new Date().toISOString(),
+    };
+    memoryUsers.set(email, user);
+    return user;
+  }
+
+  const request = pool.request();
+  request.input('Id', sql.NVarChar(128), `usr-${crypto.randomUUID()}`);
+  request.input('Name', sql.NVarChar(150), name);
+  request.input('Email', sql.NVarChar(200), email);
+  request.input('PasswordHash', sql.NVarChar(256), hashPassword(password));
+  const existing = await pool.request()
+    .input('Email', sql.NVarChar(200), email)
+    .query('SELECT TOP 1 Id FROM Users WHERE Email = @Email;');
+  if (existing.recordset?.length) {
+    throw new Error('El correo ya está registrado.');
+  }
+  const result = await request.query(`
+    INSERT INTO Users (Id, Name, Email, PasswordHash, CreatedAt)
+    VALUES (@Id, @Name, @Email, @PasswordHash, SYSUTCDATETIME());
+    SELECT Id, Name, Email, CreatedAt FROM Users WHERE Id = @Id;
+  `);
+  return result.recordset?.[0] || null;
+}
+
+async function loginUser({ email, password }) {
+  const pool = await getDbPool();
+  if (!pool) {
+    const localUser = memoryUsers.get(email);
+    if (!localUser || !verifyPassword(password, localUser.passwordHash)) return null;
+    return localUser;
+  }
+
+  const result = await pool.request()
+    .input('Email', sql.NVarChar(200), email)
+    .query('SELECT TOP 1 Id, Name, Email, PasswordHash, CreatedAt FROM Users WHERE Email = @Email;');
+  const user = result.recordset?.[0];
+  if (!user) return null;
+  if (!verifyPassword(password, user.PasswordHash)) return null;
+  return user;
+}
+
+async function listChats(userId) {
+  const pool = await getDbPool();
+  if (!pool) {
+    return [...memoryChats.values()].filter((chat) => chat.userId === userId);
+  }
+
+  const request = pool.request();
+  request.input('UserId', sql.NVarChar(128), userId);
+  const result = await request.query(`
+    SELECT Id, UserId, Title, CreatedAt
+    FROM Chats
+    WHERE UserId = @UserId
+    ORDER BY CreatedAt ASC;
+  `);
+  return result.recordset || [];
+}
+
+async function saveChat({ id, userId, title }) {
+  const pool = await getDbPool();
+  if (!pool) {
+    const chatId = id || `chat-${Date.now()}`;
+    const next = {
+      id: chatId,
+      userId,
+      title: title || 'Nuevo chat',
+      createdAt: new Date().toISOString(),
+    };
+    memoryChats.set(chatId, next);
+    return next;
+  }
+
+  const request = pool.request();
+  request.input('Id', sql.NVarChar(128), id || null);
+  request.input('UserId', sql.NVarChar(128), userId);
+  request.input('Title', sql.NVarChar(200), title || 'Nuevo chat');
+  const result = await request.query(`
+    SET NOCOUNT ON;
+    DECLARE @ChatId NVARCHAR(128) = COALESCE(@Id, CONVERT(NVARCHAR(128), NEWID()));
+    IF EXISTS (SELECT 1 FROM Chats WHERE Id = @ChatId)
+    BEGIN
+      UPDATE Chats SET Title = @Title WHERE Id = @ChatId;
+    END
+    ELSE
+    BEGIN
+      INSERT INTO Chats (Id, UserId, Title, CreatedAt)
+      VALUES (@ChatId, @UserId, @Title, SYSUTCDATETIME());
+    END
+    SELECT Id, UserId, Title, CreatedAt FROM Chats WHERE Id = @ChatId;
+  `);
+  return result.recordset?.[0] || null;
+}
+
+async function listMessages(chatId) {
+  const pool = await getDbPool();
+  if (!pool) {
+    return memoryMessages.get(chatId) || [];
+  }
+
+  const request = pool.request();
+  request.input('ChatId', sql.NVarChar(128), chatId);
+  const result = await request.query(`
+    SELECT Id, ChatId, Role, Content, [Timestamp]
+    FROM Messages
+    WHERE ChatId = @ChatId
+    ORDER BY [Timestamp] ASC;
+  `);
+  return result.recordset || [];
+}
+
+async function saveMessage({ id, chatId, sender, text }) {
+  const role = sender === 'assistant' ? 'assistant' : (sender || 'user');
+  const content = text || '';
+  const pool = await getDbPool();
+  if (!pool) {
+    const messageId = id || `${Date.now()}`;
+    const next = { id: messageId, chatId, sender: role, text: content, time: new Date().toISOString() };
+    const current = memoryMessages.get(chatId) || [];
+    if (!current.some((item) => item.id === messageId)) {
+      current.push(next);
+      memoryMessages.set(chatId, current);
+    }
+    return next;
+  }
+
+  const request = pool.request();
+  request.input('Id', sql.NVarChar(128), id || null);
+  request.input('ChatId', sql.NVarChar(128), chatId);
+  request.input('Role', sql.NVarChar(20), role);
+  request.input('Content', sql.NVarChar(sql.MAX), content);
+  const result = await request.query(`
+    SET NOCOUNT ON;
+    DECLARE @MessageId NVARCHAR(128) = COALESCE(@Id, CONVERT(NVARCHAR(128), NEWID()));
+    IF NOT EXISTS (SELECT 1 FROM Messages WHERE Id = @MessageId)
+    BEGIN
+      INSERT INTO Messages (Id, ChatId, Role, Content, [Timestamp])
+      VALUES (@MessageId, @ChatId, @Role, @Content, SYSUTCDATETIME());
+    END
+    SELECT Id, ChatId, Role, Content, [Timestamp] FROM Messages WHERE Id = @MessageId;
+  `);
+  const row = result.recordset?.[0] || null;
+  if (!row) return null;
+  return {
+    id: row.Id,
+    chatId: row.ChatId,
+    sender: row.Role,
+    text: row.Content,
+    time: row.Timestamp,
+  };
+}
+
+async function deleteChat(chatId) {
+  const pool = await getDbPool();
+  if (!pool) {
+    memoryChats.delete(chatId);
+    memoryMessages.delete(chatId);
+    return true;
+  }
+
+  const request = pool.request();
+  request.input('ChatId', sql.NVarChar(128), chatId);
+  await request.query(`
+    DELETE FROM Messages WHERE ChatId = @ChatId;
+    DELETE FROM Chats WHERE Id = @ChatId;
+  `);
+  return true;
+}
 
 function buildSystemPrompt(thinkingMode = 'normal') {
   const prefix = THINKING_PROMPTS[thinkingMode] || '';
@@ -217,14 +423,152 @@ function isPreferredModel(model, preferredModel) {
   return list.includes(model);
 }
 
-app.get('/api/health', (_req, res) => {
-  res.json({
-    ok: true,
-    providers: {
-      gemini: Boolean(GEMINI_API_KEYS.length),
-      groq: Boolean(GROQ_API_KEYS.length),
-    },
-  });
+app.get('/api/health', async (_req, res) => {
+  try {
+    const pool = await getDbPool();
+    const db = getDbInfo();
+    const persistenceReady = Boolean(pool && db.connected);
+    return res.json({
+      ok: true,
+      persistenceReady,
+      db,
+      providers: {
+        gemini: Boolean(GEMINI_API_KEYS.length),
+        groq: Boolean(GROQ_API_KEYS.length),
+      },
+      pid: process.pid,
+      healthRevision: '2026-04-12-r3',
+    });
+  } catch (_error) {
+    return res.json({
+      ok: true,
+      persistenceReady: false,
+      db: getDbInfo(),
+      providers: {
+        gemini: Boolean(GEMINI_API_KEYS.length),
+        groq: Boolean(GROQ_API_KEYS.length),
+      },
+      pid: process.pid,
+      healthRevision: '2026-04-12-r3',
+    });
+  }
+});
+
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    if (!name) return res.status(400).json({ error: 'Nombre requerido.' });
+    if (!email) return res.status(400).json({ error: 'Email requerido.' });
+    if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres.' });
+
+    const user = await registerUser({ name, email, password });
+    return res.json({
+      ok: true,
+      user: {
+        id: user.id || user.Id,
+        name: user.name || user.Name,
+        email: user.email || user.Email,
+        createdAt: user.createdAt || user.CreatedAt,
+      },
+    });
+  } catch (error) {
+    const message = String(error.message || '');
+    if (message.includes('ya está registrado') || message.includes('UNIQUE')) {
+      return res.status(409).json({ error: 'Este correo ya existe.' });
+    }
+    return res.status(500).json({ error: message || 'No se pudo registrar.' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    if (!email) return res.status(400).json({ error: 'Email requerido.' });
+    if (!password) return res.status(400).json({ error: 'Contraseña requerida.' });
+
+    const user = await loginUser({ email, password });
+    if (!user) return res.status(401).json({ error: 'Credenciales inválidas.' });
+    return res.json({
+      ok: true,
+      user: {
+        id: user.id || user.Id,
+        name: user.name || user.Name,
+        email: user.email || user.Email,
+        createdAt: user.createdAt || user.CreatedAt,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'Error de autenticacion.' });
+  }
+});
+
+app.post('/api/auth/logout', (_req, res) => {
+  return res.json({ ok: true });
+});
+
+app.get('/api/chats', async (req, res) => {
+  try {
+    const userId = typeof req.query?.userId === 'string' ? req.query.userId.trim() : '';
+    if (!userId) return res.status(400).json({ error: 'userId requerido.' });
+    const chats = await listChats(userId);
+    return res.json({ ok: true, chats });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'No se pudieron listar chats.' });
+  }
+});
+
+app.post('/api/chats', async (req, res) => {
+  try {
+    const userId = typeof req.body?.userId === 'string' ? req.body.userId.trim() : '';
+    if (!userId) return res.status(400).json({ error: 'userId requerido.' });
+    const id = typeof req.body?.id === 'string' ? req.body.id.trim() : '';
+    const title = typeof req.body?.title === 'string' ? req.body.title.trim() : 'Nuevo chat';
+    const chat = await saveChat({ id, userId, title });
+    return res.json({ ok: true, chat });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'No se pudo guardar chat.' });
+  }
+});
+
+app.delete('/api/chats/:chatId', async (req, res) => {
+  try {
+    const chatId = String(req.params.chatId || '').trim();
+    if (!chatId) return res.status(400).json({ error: 'chatId requerido.' });
+    await deleteChat(chatId);
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'No se pudo eliminar chat.' });
+  }
+});
+
+app.get('/api/chats/:chatId/messages', async (req, res) => {
+  try {
+    const chatId = String(req.params.chatId || '').trim();
+    if (!chatId) return res.status(400).json({ error: 'chatId requerido.' });
+    const messages = await listMessages(chatId);
+    const normalized = messages.map((row) => ({
+      id: row.id || row.Id,
+      chatId: row.chatId || row.ChatId,
+      sender: row.sender || row.Role,
+      text: row.text || row.Content,
+      time: row.time || row.Timestamp,
+    }));
+    return res.json({ ok: true, messages: normalized });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'No se pudieron listar mensajes.' });
+  }
+});
+
+app.post('/api/messages', async (req, res) => {
+  try {
+    const message = await saveMessage(req.body || {});
+    return res.json({ ok: true, message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'No se pudo guardar el mensaje.' });
+  }
 });
 
 app.post('/api/flowbot-proxy', async (req, res) => {

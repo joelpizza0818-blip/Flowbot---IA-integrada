@@ -20,6 +20,7 @@ const PROVIDER_KEYS = {
 };
 
 const PROXY_BASE_URL = (import.meta.env.VITE_PROXY_URL || '').replace(/\/$/, '');
+const EXECUTION_MODE = (import.meta.env.VITE_AI_EXECUTION_MODE || 'hybrid').toLowerCase();
 
 const BASE_SYSTEM_PROMPT =
   import.meta.env.VITE_SYSTEM_PROMPT ||
@@ -228,6 +229,7 @@ async function fetchProviderModel(provider, model, userMessage, systemPrompt, ap
 }
 
 async function fetchProxyResponse(userMessage, preferredModel = 'auto', thinkingMode = 'normal') {
+  if (EXECUTION_MODE === 'local') return null;
   try {
     const { response, data } = await fetchJsonWithTimeout(
       getProxyEndpoint(),
@@ -292,7 +294,10 @@ function getModelCandidates(preferredGroup = 'auto') {
   }
 
   const groupModels = MODEL_GROUPS[preferredGroup]?.models || MODEL_GROUPS.auto.models;
-  const provider = preferredGroup === 'groq' ? 'groq' : 'gemini';
+  const provider =
+    preferredGroup === 'groq'
+      ? 'groq'
+      : 'gemini';
   return groupModels.map((model) => ({ provider, model }));
 }
 
@@ -339,12 +344,20 @@ async function fetchDirectResponse(userMessage, preferredModel = 'auto', thinkin
 }
 
 export async function fetchGeminiAI(userMessage, preferredModel = 'auto', thinkingMode = 'normal') {
-  const proxyResult = await fetchProxyResponse(userMessage, preferredModel, thinkingMode);
+  const shouldTryProxy = EXECUTION_MODE !== 'local';
+  const shouldTryDirect = EXECUTION_MODE !== 'proxy';
+
+  const proxyResult = shouldTryProxy
+    ? await fetchProxyResponse(userMessage, preferredModel, thinkingMode)
+    : null;
   if (proxyResult && !proxyResult.error) return proxyResult;
 
-  const directResult = await fetchDirectResponse(userMessage, preferredModel, thinkingMode);
+  const directResult = shouldTryDirect
+    ? await fetchDirectResponse(userMessage, preferredModel, thinkingMode)
+    : null;
   if (directResult) return directResult;
 
+  // Si estamos en modo hibrido o proxy y el proxy fallo, devolvemos ese detalle.
   if (proxyResult) return proxyResult;
 
   return { text: AI_UNAVAILABLE_MESSAGE, model: null, fallbackReason: null, source: null };

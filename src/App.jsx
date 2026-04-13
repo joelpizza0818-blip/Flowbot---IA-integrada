@@ -2,34 +2,47 @@
 import FlowLogo from './components/FlowLogo';
 import ChatMessage from './components/ChatMessage';
 import IntentIcon from './components/IntentIcon';
+import AuthPage from './components/AuthPage';
 import {
   generateBotResponse,
   intentGroups,
   availableActions,
 } from './chatbotLogic';
 import { CONTEXT_WINDOW_SIZE, getContextUsage } from './contextPrompt';
+import { checkBackendAvailability } from './appMode';
+import { clearStoredAuthUser, getCurrentUser, loginUser, logoutUser, registerUser } from './auth';
+import { storage } from './storage';
 import './App.css';
 import './flowbot.animations.css';
 
 const MOBILE_BREAKPOINT        = 768;
 const IDLE_TIMEOUT_MS          = 15000;
 
-function getEnvironmentInfo() {
+function getEnvironmentInfo({ backendAvailable, isOnline }) {
   const host = window.location.hostname;
-  const isProxy = !!import.meta.env.VITE_PROXY_URL;
+  const isDeployedHost = host.endsWith('.github.io') || host.endsWith('.vercel.app') || host.endsWith('.netlify.app');
 
-  // 1. En linea (Deployed logic)
-  if (host.endsWith('.github.io') || host.endsWith('.vercel.app') || host.endsWith('.netlify.app')) {
-    return { label: 'En linea', detail: 'Deploy', isLocal: false, className: 'is-deployed' };
+  if (backendAvailable) {
+    return {
+      label: 'En linea',
+      detail: isDeployedHost
+        ? 'SaaS conectado: autenticacion activa y chats persistentes.'
+        : 'Backend SQL activo con historial por usuario.',
+      isLocal: false,
+      className: 'is-deployed',
+      mode: 'online',
+    };
   }
 
-  // 2. Proxy (Running with proxy server)
-  if (isProxy) {
-    return { label: 'Proxy', detail: 'Backend Proxy', isLocal: true, className: 'is-proxy' };
-  }
-
-  // 3. Local (Running local purely with frontend logic)
-  return { label: 'Local', detail: 'Logica Nativa', isLocal: true, className: 'is-local' };
+  return {
+    label: 'Local',
+    detail: isOnline
+      ? 'Sin backend disponible. Guardado local por dispositivo.'
+      : 'Sin red y sin backend. Funcionando 100% local.',
+    isLocal: true,
+    className: 'is-local',
+    mode: 'local',
+  };
 }
 
 function getTimeString() {
@@ -148,6 +161,14 @@ function App() {
   const [searchModalInput, setSearchModalInput] = useState('');
   const [timerModalOpen, setTimerModalOpen]   = useState(false);
   const [timerModalValue, setTimerModalValue] = useState('');
+  const [recentChats, setRecentChats] = useState([]);
+  const [activeChatId, setActiveChatId] = useState(null);
+  const [appReady, setAppReady] = useState(false);
+  const [chatBootstrapReady, setChatBootstrapReady] = useState(false);
+  const [authInitialTab, setAuthInitialTab] = useState('login');
+  const [backendAvailable, setBackendAvailable] = useState(false);
+  const [authUser, setAuthUser] = useState(null);
+  const [authErrorMessage, setAuthErrorMessage] = useState('');
 
   const [thinkingMode, setThinkingMode]       = useState('normal');
   const [preferredModel, setPreferredModel]   = useState('auto');
@@ -164,7 +185,7 @@ function App() {
   const [justReceivedResponse, setJustReceivedResponse] = useState(false);
   const idleTimerRef = useRef(null);
   const hasPlayedGreetingRef = useRef(false);
-  const envInfo = getEnvironmentInfo();
+  const envInfo = getEnvironmentInfo({ backendAvailable, isOnline: connectivityInfo.isOnline });
   const hasConversation = messages.length > 1;
 
   const handleEphemeralStatus = useCallback((status) => {
@@ -184,6 +205,9 @@ function App() {
   const inputRef              = useRef(null);
   const composerDockRef       = useRef(null);
   const nextId                = useRef(1);
+  const activeUserRef         = useRef(null);
+  const activeChatIdRef       = useRef(null);
+  const loadedUserRef         = useRef(null);
   const islandDragStateRef    = useRef(null);
   const wasCompactRef         = useRef(null);
   const [composerHeight, setComposerHeight] = useState(0);
@@ -194,7 +218,82 @@ function App() {
     return Math.max(margin + halfWidth, Math.min(window.innerWidth - margin - halfWidth, x));
   }, []);
 
+  const sortChatsByDate = useCallback((chats) => (
+    [...chats].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+  ), []);
 
+
+
+  useEffect(() => {
+    let mounted = true;
+    let pollTimer = null;
+
+    (async () => {
+      const availability = await checkBackendAvailability();
+      if (!mounted) return;
+      setBackendAvailable(Boolean(availability.backendAvailable));
+      const user = await getCurrentUser();
+      if (!mounted) return;
+      setAuthUser(user || null);
+      if (!user?.id) setChatBootstrapReady(false);
+      setAppReady(true);
+
+      pollTimer = window.setInterval(async () => {
+        const nextAvailability = await checkBackendAvailability(2200, 0);
+        if (!mounted) return;
+        setBackendAvailable(Boolean(nextAvailability.backendAvailable));
+      }, 10000);
+    })();
+
+    return () => {
+      mounted = false;
+      if (pollTimer) window.clearInterval(pollTimer);
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!appReady || !authUser?.id) return () => {};
+    if (loadedUserRef.current === authUser.id) return () => {};
+    loadedUserRef.current = authUser.id;
+
+    (async () => {
+      const user = authUser;
+
+      activeUserRef.current = user;
+
+      let chats = await storage.getChats(user.id);
+      let activeChat = chats[0];
+
+      if (!activeChat) {
+        activeChat = await storage.saveChat(user.id, {
+          id: `chat-${crypto.randomUUID()}`,
+          title: 'Nuevo chat',
+        });
+        chats = [activeChat];
+      }
+
+      activeChatIdRef.current = activeChat.id;
+      setActiveChatId(activeChat.id);
+      setRecentChats(sortChatsByDate(chats));
+      await storage.syncOfflineChats(user.id);
+
+      const storedMessages = await storage.getMessages(activeChat.id);
+      if (!mounted) return;
+
+      setMessages(storedMessages);
+      const highestId = storedMessages.reduce((max, item) => {
+        const numeric = Number(item.id);
+        return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+      }, 0);
+      nextId.current = highestId + 1;
+      setChatBootstrapReady(true);
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [appReady, authUser, sortChatsByDate]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
   useEffect(() => { if (navigationUrl) window.location.href = navigationUrl; }, [navigationUrl]);
@@ -345,14 +444,50 @@ function App() {
   }, [isTyping, justReceivedResponse]);
 
   // â”€â”€ Send message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  async function persistMessage(message) {
+    const chatId = activeChatIdRef.current;
+    if (!chatId) return;
+    if (message?.ephemeral) return;
+    const activeChat = recentChats.find((chat) => chat.id === chatId);
+    await storage.saveMessage({ ...message, chatId, storageSource: activeChat?.source || 'backend' });
+  }
+
+  function createMessageId() {
+    return `msg-${crypto.randomUUID()}`;
+  }
+
+  async function ensureChatTitleFromFirstUserMessage(messageText) {
+    if (!activeUserRef.current?.id || !activeChatIdRef.current) return;
+    const chatId = activeChatIdRef.current;
+    const current = recentChats.find((chat) => chat.id === chatId);
+    if (!current || (current.title && current.title !== 'Nuevo chat')) return;
+    const nextTitle = (messageText || '').trim().slice(0, 72);
+    if (!nextTitle) return;
+
+    const updated = await storage.saveChat(activeUserRef.current.id, {
+      id: chatId,
+      title: nextTitle,
+      createdAt: current.createdAt,
+      source: current.source,
+    });
+    setRecentChats((prev) => sortChatsByDate(prev.map((chat) => (
+      chat.id === chatId ? { ...chat, ...updated } : chat
+    ))));
+  }
+
   function handleSend() {
+    if (!chatBootstrapReady) return;
     const trimmed = input.trim();
     if (!trimmed) return;
 
-    const userMsg = { id: nextId.current++, sender: 'user', text: trimmed, intents: [], time: getTimeString(), ephemeral: isEphemeralMode };
+    const userMsg = { id: createMessageId(), sender: 'user', text: trimmed, intents: [], time: getTimeString(), ephemeral: isEphemeralMode };
     const recentConversation = [...visibleMessages, userMsg];
 
     setMessages((prev) => [...prev, userMsg]);
+    void persistMessage(userMsg);
+    if (!isEphemeralMode) {
+      void ensureChatTitleFromFirstUserMessage(trimmed);
+    }
     setInput('');
     setIsTyping(true);
     setIslandOpen(false);
@@ -363,7 +498,7 @@ function App() {
       const response    = await generateBotResponse(trimmed, recentConversation, preferredModel, thinkingMode);
 
       const botMsg = {
-        id:            nextId.current++,
+        id:            createMessageId(),
         sender:        'bot',
         text:          response.text,
         iconName:      response.iconName,
@@ -377,6 +512,7 @@ function App() {
       };
 
       setMessages((prev) => [...prev, botMsg]);
+      void persistMessage(botMsg);
       setIsTyping(false);
       setJustReceivedResponse(true);
 
@@ -413,6 +549,78 @@ function App() {
     setIslandOpen(false);
     setIsGreetingWaveActive(false);
     hasPlayedGreetingRef.current = false;
+    if (activeUserRef.current?.id) {
+      void storage.saveChat(activeUserRef.current.id, {
+        id: `chat-${crypto.randomUUID()}`,
+        title: 'Nuevo chat',
+      }).then((chat) => {
+        if (!chat) return;
+        activeChatIdRef.current = chat.id;
+        setActiveChatId(chat.id);
+        setRecentChats((prev) => sortChatsByDate([chat, ...prev]));
+      });
+    }
+  }
+
+  async function handleSelectChat(chatId) {
+    if (!chatId) return;
+    const selectedMessages = await storage.getMessages(chatId);
+    activeChatIdRef.current = chatId;
+    setActiveChatId(chatId);
+    setMessages(selectedMessages?.length ? selectedMessages : [createWelcomeMessage()]);
+    const highestId = (selectedMessages || []).reduce((max, item) => {
+      const numeric = Number(item.id);
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+    nextId.current = highestId + 1;
+    if (viewportMetrics.isCompact) setSidebarOpen(false);
+  }
+
+  async function handleDeleteRecentChat(chatId) {
+    if (!chatId) return;
+    const activeUserId = activeUserRef.current?.id;
+    if (!activeUserId) return;
+
+    try {
+      const deletingActiveChat = activeChatIdRef.current === chatId;
+
+      await storage.deleteChat(chatId);
+
+      let nextChats = sortChatsByDate(recentChats.filter((chat) => chat.id !== chatId));
+
+      if (!nextChats.length) {
+        const fallbackChat = await storage.saveChat(activeUserId, {
+          id: `chat-${crypto.randomUUID()}`,
+          title: 'Nuevo chat',
+        });
+        if (fallbackChat) nextChats = [fallbackChat];
+      }
+
+      setRecentChats(nextChats);
+
+      if (!deletingActiveChat) return;
+
+      const nextActiveChat = nextChats[0] || null;
+      if (!nextActiveChat) {
+        activeChatIdRef.current = null;
+        setActiveChatId(null);
+        setMessages([createWelcomeMessage()]);
+        nextId.current = 1;
+        return;
+      }
+
+      activeChatIdRef.current = nextActiveChat.id;
+      setActiveChatId(nextActiveChat.id);
+      const selectedMessages = await storage.getMessages(nextActiveChat.id);
+      setMessages(selectedMessages?.length ? selectedMessages : [createWelcomeMessage()]);
+      const highestId = (selectedMessages || []).reduce((max, item) => {
+        const numeric = Number(item.id);
+        return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+      }, 0);
+      nextId.current = highestId + 1;
+    } catch (error) {
+      console.error('No se pudo eliminar el chat:', error);
+    }
   }
 
   function handleIslandPointerDown(e) {
@@ -527,7 +735,7 @@ function App() {
   ];
 
   const modelOptions = [
-    { key: 'auto', label: 'Automático', desc: 'FlowBot elige entre Gemini 3.1 y GPT OSS según la consulta.' },
+    { key: 'auto', label: 'Automático', desc: 'FlowBot elige entre Gemini y GPT OSS según la consulta.' },
     { key: 'gemini-3.1', label: 'Gemini 3.1', desc: 'Más fuerte para arquitectura, UI compleja y respuestas largas.' },
     { key: 'groq', label: 'GPT OSS / Llama', desc: 'Más rápido para debugging, dudas breves y consultas iterativas.' },
   ];
@@ -539,10 +747,14 @@ function App() {
 
   const isCompactViewport = viewportMetrics.isCompact;
   const isMobileKeyboardOpen = viewportMetrics.isCompact && viewportMetrics.keyboardOpen;
+  const isMobileComposerPinned = hasConversation && isCompactViewport;
+  const composerMobileHeight = isMobileComposerPinned ? composerHeight : 0;
+  const composerMobileOffset = isMobileComposerPinned ? viewportMetrics.keyboardOffset : 0;
   const isEmptyState = !hasConversation;
   const visibleMessages = messages;
   const { usedSlots: displayedContextSlots } = getContextUsage(messages);
   const liveStatusItems = [envInfo, connectivityInfo];
+  const hasLocalChats = recentChats.some((chat) => chat.source === 'local');
 
   const activeModelOption = modelOptions.find((option) => option.key === preferredModel) || modelOptions[0];
   const activeThinkingOption = thinkingOptions.find((option) => option.id === thinkingMode) || thinkingOptions[0];
@@ -560,23 +772,114 @@ function App() {
       : displayedContextSlots < CONTEXT_WINDOW_SIZE * 0.55
         ? 'Memoria aprendiendo el contexto actual'
         : 'Memoria lista para conversaciónes largas';
-  const heroDescription = isCompactViewport
-    ? 'Pide una feature, pega un bug o aterriza una idea en codigo listo para iterar.'
-    : 'Pídele una feature, pega un bug o aterriza una idea en codigo listo para iterar. Todo desde un chat pensado para productos web reales.';
+  const programCopy = envInfo.mode === 'online'
+    ? {
+      heroCompact: 'Version en linea: autenticacion activa y chats persistentes por usuario.',
+      heroDesktop: 'Version en linea (SaaS): autenticacion, persistencia SQL y continuidad real de historiales entre sesiones.',
+      hintCompact: 'Modo SaaS activo. Enter para enviar.',
+      hintDesktop: 'Modo en linea: historial por usuario, reapertura de chats y sincronizacion con backend.',
+      statusIdle: 'Trabaja con contexto persistente y sesiones autenticadas.',
+    }
+    : {
+      heroCompact: 'Version local: guardado por dispositivo con fallback automatico.',
+      heroDesktop: 'Version local: chatbot funcional sin backend, usando localStorage por dispositivo para continuar tus chats.',
+      hintCompact: 'Modo local activo. Enter para enviar.',
+      hintDesktop: 'Modo local: historial por dispositivo y funcionamiento sin backend.',
+      statusIdle: 'Pega codigo, describe el bug o pide la feature completa.',
+    };
+  const heroDescription = isCompactViewport ? programCopy.heroCompact : programCopy.heroDesktop;
   const composerStatusLabel = isTyping ? 'Respondiendo' : (isCompactViewport ? 'Nueva consulta' : 'Listo para colaborar');
   const composerStatusDescription = isTyping
     ? 'FlowBot está preparando una respuesta.'
-    : 'Pega codigo, describe el bug o pide la feature completa.';
+    : programCopy.statusIdle;
   const composerHint = isCompactViewport
-    ? 'Atajos rápidos arriba. Enter para enviar.'
-    : 'Ejemplos útiles: "Crea un navbar responsive en React", "Explícame este error", "Optimiza este componente".';
+    ? programCopy.hintCompact
+    : programCopy.hintDesktop;
+
+  async function handleAuthLogin(credentials) {
+    try {
+      const user = await loginUser(credentials);
+      setAuthErrorMessage('');
+      setAuthUser(user);
+    } catch (error) {
+      setAuthErrorMessage(error.message || 'No se pudo iniciar sesión.');
+      throw error;
+    }
+  }
+
+  async function handleAuthRegister(credentials) {
+    try {
+      const user = await registerUser(credentials);
+      setAuthErrorMessage('');
+      setAuthUser(user);
+    } catch (error) {
+      setAuthErrorMessage(error.message || 'No se pudo registrar.');
+      throw error;
+    }
+  }
+
+  async function handleLogout() {
+    await logoutUser();
+    setAuthInitialTab('login');
+    setAuthUser(null);
+    setChatBootstrapReady(false);
+    setRecentChats([]);
+    setActiveChatId(null);
+    activeChatIdRef.current = null;
+    loadedUserRef.current = null;
+  }
+
+  function handleShowAuth(tab) {
+    clearStoredAuthUser();
+    setAuthInitialTab(tab === 'register' ? 'register' : 'login');
+    setAuthUser(null);
+    setChatBootstrapReady(false);
+    setRecentChats([]);
+    setActiveChatId(null);
+    activeChatIdRef.current = null;
+    loadedUserRef.current = null;
+  }
+
+  if (!appReady) {
+    return (
+      <main className="auth-screen">
+        <section className="auth-card">
+          <h1>FlowBot</h1>
+          <p className="auth-subtitle">Inicializando sistema...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!authUser) {
+    return (
+      <AuthPage
+        backendAvailable={backendAvailable}
+        onLogin={handleAuthLogin}
+        onRegister={handleAuthRegister}
+        errorMessage={authErrorMessage}
+        initialTab={authInitialTab}
+      />
+    );
+  }
+
+  if (!chatBootstrapReady) {
+    return (
+      <main className="auth-screen">
+        <section className="auth-card">
+          <h1>FlowBot</h1>
+          <p className="auth-subtitle">Cargando tus chats...</p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <div
       className={`app-container ${hasConversation ? 'app-container-has-conversation' : ''} ${isMobileKeyboardOpen ? 'app-container-keyboard-open' : ''}`}
       style={{
-        '--composer-mobile-height': `${composerHeight}px`,
-        '--composer-mobile-offset': `${viewportMetrics.keyboardOffset}px`,
+        '--composer-mobile-height': `${composerMobileHeight}px`,
+        '--composer-mobile-offset': `${composerMobileOffset}px`,
       }}
     >
       {/* â”€â”€ Timer alert â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
@@ -735,6 +1038,79 @@ function App() {
           </div>
         </details>
 
+        <details className="sidebar-section" name="sidebar-menu" open>
+          <summary className="sidebar-section-summary">
+            <span>Chats recientes</span>
+            <svg className="sidebar-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </summary>
+          <div className="sidebar-section-body">
+            <div className="recent-chat-list">
+              {recentChats.length === 0 && (
+                <p className="recent-chat-empty">No hay chats guardados todavía.</p>
+              )}
+              {recentChats.map((chat) => (
+                <div key={chat.id} className="recent-chat-row">
+                  <button
+                    type="button"
+                    className={`recent-chat-item ${activeChatId === chat.id ? 'recent-chat-item-active' : ''}`}
+                    onClick={() => { void handleSelectChat(chat.id); }}
+                  >
+                    <span className="recent-chat-title">{chat.title || 'Nuevo chat'}</span>
+                    <span className={`recent-chat-source ${chat.source === 'backend' ? 'is-backend' : 'is-local'}`}>
+                      {chat.source === 'backend' ? 'En linea' : 'Local'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="recent-chat-delete"
+                    aria-label={`Eliminar chat ${chat.title || 'Nuevo chat'}`}
+                    title="Eliminar chat"
+                    onClick={() => { void handleDeleteRecentChat(chat.id); }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+            {hasLocalChats && (
+              <p className="local-chat-warning">
+                Advertencia: chat local guardado por dispositivo, no por usuario.
+              </p>
+            )}
+          </div>
+        </details>
+
+        <details className="sidebar-section" open>
+          <summary className="sidebar-section-summary">
+            <span>Cuenta</span>
+            <svg className="sidebar-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </summary>
+          <div className="sidebar-section-body">
+            {backendAvailable ? (
+              <div className="sidebar-auth-actions">
+                <button type="button" className="sidebar-auth-btn" onClick={() => handleShowAuth('login')}>
+                  Login
+                </button>
+                <button type="button" className="sidebar-auth-btn" onClick={() => handleShowAuth('register')}>
+                  Registro
+                </button>
+                <button type="button" className="sidebar-auth-btn sidebar-auth-btn-danger" onClick={() => { void handleLogout(); }}>
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <p className="recent-chat-empty">Backend no disponible para autenticación.</p>
+            )}
+          </div>
+        </details>
+
         <div className="sidebar-footer">
           <button className="clear-chat-btn" onClick={handleClearChat}>
             <span className="btn-icon"><IntentIcon name="clear" size={16} /></span>
@@ -834,6 +1210,19 @@ function App() {
                   <IntentIcon name="clear" size={16} />
                   <span>Limpiar</span>
                 </button>
+                {backendAvailable && (
+                  <>
+                    <button type="button" className="dynamic-island-action" onClick={() => handleShowAuth('login')}>
+                      <span>Login</span>
+                    </button>
+                    <button type="button" className="dynamic-island-action" onClick={() => handleShowAuth('register')}>
+                      <span>Registro</span>
+                    </button>
+                    <button type="button" className="dynamic-island-action dynamic-island-action-danger" onClick={handleLogout}>
+                      <span>Logout</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -943,7 +1332,7 @@ function App() {
         {/* â”€â”€ Composer dock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div
           ref={composerDockRef}
-          className={`composer-dock ${hasConversation ? 'composer-dock-compact' : ''} ${hasConversation && isCompactViewport ? 'composer-dock-mobile-pinned' : ''}`}
+          className={`composer-dock ${hasConversation ? 'composer-dock-compact' : ''} ${isMobileComposerPinned ? 'composer-dock-mobile-pinned' : ''}`}
         >
           <div className="composer-shell">
             <div className={`quick-actions ${isComposerFocused && viewportMetrics.isCompact ? 'quick-actions-hidden' : ''} ${hasConversation ? 'quick-actions-compact' : ''}`}>

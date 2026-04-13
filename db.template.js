@@ -1,0 +1,35 @@
+﻿export const SQLSERVER_2019_SCHEMA_TEMPLATE = `
+-- FlowBot SQL Server 2019 schema template
+-- This file is a reference template and does not connect to the database.
+
+CREATE TABLE Users (
+  Id NVARCHAR(128) NOT NULL PRIMARY KEY,
+  Name NVARCHAR(150) NOT NULL,
+  Email NVARCHAR(200) NOT NULL UNIQUE,
+  PasswordHash NVARCHAR(256) NOT NULL,
+  CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+
+CREATE TABLE Chats (
+  Id NVARCHAR(128) NOT NULL PRIMARY KEY,
+  UserId NVARCHAR(128) NOT NULL,
+  Title NVARCHAR(200) NOT NULL,
+  CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+  CONSTRAINT FK_Chats_Users FOREIGN KEY (UserId) REFERENCES Users(Id)
+);
+
+CREATE TABLE Messages (
+  Id NVARCHAR(128) NOT NULL PRIMARY KEY,
+  ChatId NVARCHAR(128) NOT NULL,
+  Role NVARCHAR(20) NOT NULL CHECK (Role IN ('user', 'assistant')),
+  Content NVARCHAR(MAX) NOT NULL,
+  [Timestamp] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+  CONSTRAINT FK_Messages_Chats FOREIGN KEY (ChatId) REFERENCES Chats(Id)
+);
+
+CREATE INDEX IX_Chats_UserId ON Chats(UserId);
+CREATE INDEX IX_Messages_ChatId_Timestamp ON Messages(ChatId, [Timestamp]);
+`;
+
+export default SQLSERVER_2019_SCHEMA_TEMPLATE;
+

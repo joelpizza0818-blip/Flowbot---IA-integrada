@@ -273,3 +273,76 @@ Para reportar bugs, sugerencias o preguntas:
 **Hecho con ❤️ Joel**
 
 </div>
+
+---
+
+## Backend Startup Flow (CMD)
+
+Use this flow on Windows CMD when the UI shows "Backend no disponible".
+
+### 1) Open CMD and go to the project
+
+```cmd
+cd /d C:\dev\Flowbot---IA-integrada
+```
+
+### 2) Start SQL Server Express
+
+```cmd
+net start MSSQL$SQLEXPRESS
+```
+
+If it is already running, CMD will say so.
+
+### 3) Verify `.env` for SQL + proxy
+
+Make sure these values exist in `.env`:
+
+```env
+VITE_PROXY_URL=http://localhost:3000/api/flowbot-proxy
+SQLSERVER_HOST=localhost
+SQLSERVER_INSTANCE=JOEL\\SQLEXPRESS
+SQLSERVER_PORT=49814
+SQLSERVER_USER=sa
+SQLSERVER_PASSWORD=123456
+SQLSERVER_DATABASE=flowbot
+```
+
+### 4) Start backend (Terminal 1)
+
+```cmd
+cd /d C:\dev\Flowbot---IA-integrada
+npm run dev:server
+```
+
+### 5) Start frontend (Terminal 2)
+
+```cmd
+cd /d C:\dev\Flowbot---IA-integrada
+npm run dev
+```
+
+### 6) Validate backend health
+
+```cmd
+curl http://localhost:3000/api/health
+```
+
+Expected keys:
+
+- `"ok": true`
+- `"persistenceReady": true`
+
+### 7) If UI still says backend not available
+
+- Do `Ctrl + F5` in the browser.
+- Wait up to 10 seconds (the app now rechecks backend status periodically).
+- Confirm backend process is still running in Terminal 1.
+- Confirm `curl http://localhost:3000/api/health` still returns `ok: true`.
+
+### 8) Production start
+
+```cmd
+npm run build
+npm start
+```

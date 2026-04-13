@@ -36,11 +36,32 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          # Client-side keys
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
           VITE_GEMINI_API_KEY_FALLBACK: ${{ secrets.VITE_GEMINI_API_KEY_FALLBACK }}
           VITE_GEMINI_API_KEY_FALLBACK_2: ${{ secrets.VITE_GEMINI_API_KEY_FALLBACK_2 }}
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+          VITE_GROQ_API_KEY_FALLBACK: ${{ secrets.VITE_GROQ_API_KEY_FALLBACK }}
+
+          # Server-side fallback keys (used by proxy/server flows)
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_FALLBACK: ${{ secrets.GEMINI_API_KEY_FALLBACK }}
+          GEMINI_API_KEY_FALLBACK_2: ${{ secrets.GEMINI_API_KEY_FALLBACK_2 }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_API_KEY_FALLBACK: ${{ secrets.GROQ_API_KEY_FALLBACK }}
+          GROQ_API_KEY_FALLBACK_2: ${{ secrets.GROQ_API_KEY_FALLBACK_2 }}
+
+          # Prompt/thinking config
           VITE_SYSTEM_PROMPT: ${{ secrets.VITE_SYSTEM_PROMPT }}
+          FLOWBOT_SYSTEM_PROMPT: ${{ secrets.FLOWBOT_SYSTEM_PROMPT }}
+          VITE_THINKING_MODE_DEEP: ${{ secrets.VITE_THINKING_MODE_DEEP }}
+          VITE_THINKING_MODE_SHORT: ${{ secrets.VITE_THINKING_MODE_SHORT }}
+          FLOWBOT_THINKING_MODE_DEEP: ${{ secrets.FLOWBOT_THINKING_MODE_DEEP }}
+          FLOWBOT_THINKING_MODE_SHORT: ${{ secrets.FLOWBOT_THINKING_MODE_SHORT }}
+
+          # Network/runtime config
           VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
           VITE_BASE_PATH: /Flowbot---IA-integrada/
 
       - name: Lint
@@ -69,11 +90,33 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          # Client-side keys
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
           VITE_GEMINI_API_KEY_FALLBACK: ${{ secrets.VITE_GEMINI_API_KEY_FALLBACK }}
           VITE_GEMINI_API_KEY_FALLBACK_2: ${{ secrets.VITE_GEMINI_API_KEY_FALLBACK_2 }}
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+          VITE_GROQ_API_KEY_FALLBACK: ${{ secrets.VITE_GROQ_API_KEY_FALLBACK }}
+          VITE_GROQ_API_KEY_FALLBACK_2: ${{ secrets.VITE_GROQ_API_KEY_FALLBACK_2 }}
+
+          # Server-side fallback keys (used by proxy/server flows)
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_FALLBACK: ${{ secrets.GEMINI_API_KEY_FALLBACK }}
+          GEMINI_API_KEY_FALLBACK_2: ${{ secrets.GEMINI_API_KEY_FALLBACK_2 }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_API_KEY_FALLBACK: ${{ secrets.GROQ_API_KEY_FALLBACK }}
+          GROQ_API_KEY_FALLBACK_2: ${{ secrets.GROQ_API_KEY_FALLBACK_2 }}
+
+          # Prompt/thinking config
           VITE_SYSTEM_PROMPT: ${{ secrets.VITE_SYSTEM_PROMPT }}
+          FLOWBOT_SYSTEM_PROMPT: ${{ secrets.FLOWBOT_SYSTEM_PROMPT }}
+          VITE_THINKING_MODE_DEEP: ${{ secrets.VITE_THINKING_MODE_DEEP }}
+          VITE_THINKING_MODE_SHORT: ${{ secrets.VITE_THINKING_MODE_SHORT }}
+          FLOWBOT_THINKING_MODE_DEEP: ${{ secrets.FLOWBOT_THINKING_MODE_DEEP }}
+          FLOWBOT_THINKING_MODE_SHORT: ${{ secrets.FLOWBOT_THINKING_MODE_SHORT }}
+
+          # Network/runtime config
           VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
           VITE_BASE_PATH: /Flowbot---IA-integrada/
 
       - name: Lint
