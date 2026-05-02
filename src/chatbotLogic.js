@@ -395,31 +395,9 @@ const intentGroups = [
     ],
     details: 'Este grupo se activa cuando el usuario quiere **ejecutar tareas automaticas**. Cubre timers y scripts.',
   },
-  {
-    id: 'acciones_sistema',
-    name: 'Acciones de Sistema',
-    iconName: 'automatizar',
-    color: '#7b00ff',
-    keywords: [
-      'console', '<console>', 'pantalla completa', 'fullscreen', 'recargar', 'refresh',
-      'imprimir', 'print', 'scroll up', 'scroll down',
-    ],
-    responses: [
-      '**Accion ejecutada.** Comando procesado',
-      '**Control del sistema activado.** Procesando instruccion.',
-      '**Operacion completada.**',
-    ],
-    details: 'Este grupo controla **funciones nativas del navegador** como pantalla completa, recargar o imprimir.',
-  },
 ];
 
 const decisionRules = [
-  { intentId: 'acciones_sistema', triggerKeywords: ['pantalla completa', 'fullscreen', 'f11', 'maximizar', 'ponlo grande', 'hazlo grande', 'poner pantalla completa', 'activar pantalla completa', 'entrar a pantalla completa', 'modo cine'], action: 'toggle_fullscreen', priority: 100 },
-  { intentId: 'acciones_sistema', triggerKeywords: ['minimizar', 'colapsar', 'cerrar menu', 'abrir menu', 'sidebar', 'menu', 'saca el menu', 'quita el lateral', 'abre el lateral', 'esconder menu', 'ocultar lateral', 'mostrar lateral', 'barra lateral'], action: 'toggle_sidebar', priority: 100 },
-  { intentId: 'acciones_sistema', triggerKeywords: ['recargar', 'refresh', 'refrescar', 'f5', 'reiniciar', 'da la lu de nuevo', 'actualiza', 'actualizar pagina', 'recargar sistema', 'f5 f5', 'resetear vista'], action: 'reload_page', priority: 100 },
-  { intentId: 'acciones_sistema', triggerKeywords: ['imprimir', 'print', 'imprime esa vaina', 'sacar papel', 'pdf de esto', 'guardar como pdf', 'exportar a papel', 'imprimir chat', 'generar pdf', 'impresora', 'mandar a imprimir'], action: 'print_page', priority: 100 },
-  { intentId: 'acciones_sistema', triggerKeywords: ['subir', 'ir arriba', 'ir al inicio', 'vete al tope', 'vete al inicio', 'vuela al comienzo', 'arranca arriba', 'volver al principio', 'arriba de todo', 'scroll up'], action: 'scroll_top', priority: 100 },
-  { intentId: 'acciones_sistema', triggerKeywords: ['bajar', 'ir al final', 'bajar todo'], action: 'scroll_bottom', priority: 100 },
   { intentId: 'visualizar', triggerKeywords: ['reproducir video'], action: 'open_youtube', queryExtraction: true, urlTemplate: 'https://www.youtube.com/results?search_query={query}', fallbackUrl: 'https://www.youtube.com/', label: 'Abrir en YouTube', description: 'Se encontro contenido de video. Puedes verlo en YouTube.', priority: 30 },
   { intentId: 'visualizar', triggerKeywords: ['navegar en la web'], action: 'open_search', queryExtraction: true, urlTemplate: 'https://www.google.com/search?q={query}', fallbackUrl: 'https://www.google.com/', label: 'Buscar en Google', description: 'Busqueda preparada. Puedes continuar en Google.', priority: 30 },
   { intentId: 'automatizar', triggerKeywords: ['timer', 'temporizador', 'cronometro', 'cuenta regresiva'], action: 'set_timer', priority: 80 },
@@ -611,13 +589,13 @@ export async function generateBotResponse(userMessage, conversationHistory = [],
 }
 
 const availableActions = [
-  { id: 'toggle_fullscreen', label: 'Pantalla Completa', keywords: ['fullscreen', 'pantalla completa', 'modo cine'], icon: '🖥️' },
-  { id: 'toggle_sidebar', label: 'Minimizar', keywords: ['minimizar', 'cerrar menu', 'sidebar'], icon: '≡' },
-  { id: 'open_console', label: '<console>', keywords: ['console', '<console>'], icon: '💻' },
-  { id: 'reload_page', label: 'Recargar', keywords: ['recargar', 'refresh', 'actualizar'], icon: '🔄' },
-  { id: 'print_page', label: 'Imprimir', keywords: ['imprimir', 'print', 'pdf'], icon: '🖨️' },
-  { id: 'scroll_top', label: 'Ir Arriba', keywords: ['subir', 'ir arriba', 'inicio'], icon: '⬆️' },
-  { id: 'scroll_bottom', label: 'Ir Abajo', keywords: ['bajar', 'ir al final'], icon: '⬇️' },
+  { id: 'toggle_fullscreen', label: 'Pantalla Completa', icon: '🖥️' },
+  { id: 'toggle_sidebar', label: 'Minimizar', icon: '≡' },
+  { id: 'open_console', label: '<console>', icon: '💻' },
+  { id: 'reload_page', label: 'Recargar', icon: '🔄' },
+  { id: 'print_page', label: 'Imprimir', icon: '🖨️' },
+  { id: 'scroll_top', label: 'Ir Arriba', icon: '⬆️' },
+  { id: 'scroll_bottom', label: 'Ir Abajo', icon: '⬇️' },
   { id: 'open_search', label: 'Buscar', keywords: ['navegar'], icon: '🔍' },
   { id: 'open_youtube', label: 'Ver Video', keywords: ['reproducir video'], icon: '📺' },
   { id: 'set_timer', label: 'Timer', keywords: ['timer', 'temporizador'], icon: '⏱️' },

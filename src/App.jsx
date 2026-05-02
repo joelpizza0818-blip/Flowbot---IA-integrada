@@ -655,13 +655,7 @@ function App() {
 
         if (botMsg.actions?.length) {
           botMsg.actions.forEach(({ action }) => {
-            if      (action === 'toggle_fullscreen') { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(console.error); else document.exitFullscreen(); }
-            else if (action === 'reload_page')   setTimeout(() => window.location.reload(), 1500);
-            else if (action === 'print_page')    setTimeout(() => window.print(), 1000);
-            else if (action === 'scroll_top')    window.scrollTo({ top: 0, behavior: 'smooth' });
-            else if (action === 'scroll_bottom') window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-            else if (action === 'toggle_sidebar') setSidebarOpen((p) => !p);
-            else if (action === 'set_timer')     { setTimerModalOpen(true); setTimerModalValue(''); }
+            if (action === 'set_timer') { setTimerModalOpen(true); setTimerModalValue(''); }
           });
         }
       } catch (error) {
@@ -1307,7 +1301,7 @@ function App() {
           </summary>
           <div className="sidebar-section-body">
             <div className="intent-groups-list">
-              {intentGroups.filter((g) => ['visualizar','automatizar','acciones_sistema'].includes(g.id)).map((group) => (
+              {intentGroups.filter((g) => ['visualizar','automatizar'].includes(g.id)).map((group) => (
                 <div key={group.id} className="sidebar-group" style={{ '--group-color': group.color }}>
                   <header className="group-header">
                     <span className="group-icon"><IntentIcon name={group.iconName} size={18} /></span>

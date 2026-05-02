@@ -1,0 +1,277 @@
+<svg width="1800" height="1180" viewBox="0 0 1800 1180" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Diagrama clasico de arquitectura de FlowBot</title>
+  <desc id="desc">Flujo principal de FlowBot con inicio claro, frontend React, logica del chatbot, memoria, decision de acciones o IA, backend, base de datos, proveedores Gemini y Groq, respuesta y renderizado.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#081018"/>
+      <stop offset="1" stop-color="#06090d"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#66e1ff"/>
+      <stop offset="1" stop-color="#2c93ff"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#61f0a8"/>
+      <stop offset="1" stop-color="#28c780"/>
+    </linearGradient>
+    <linearGradient id="bluePanel" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#122436"/>
+      <stop offset="1" stop-color="#0b111a"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#121a25"/>
+      <stop offset="1" stop-color="#0a0f16"/>
+    </linearGradient>
+    <filter id="shadow" x="-15%" y="-25%" width="130%" height="160%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#00040a" flood-opacity="0.45"/>
+    </filter>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="2.6" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.4 0 0 0 0 0.88 0 0 0 0 1 0 0 0 0.6 0" result="cyanGlow"/>
+      <feMerge>
+        <feMergeNode in="cyanGlow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrowMain" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M1 1L11 6L1 11Z" fill="#66e1ff"/>
+    </marker>
+    <marker id="arrowData" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M1 1L11 6L1 11Z" fill="#61f0a8"/>
+    </marker>
+    <marker id="arrowAlt" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M1 1L11 6L1 11Z" fill="#a985ff"/>
+    </marker>
+    <style>
+      .title { fill: #f3f7fb; font: 800 44px 'Space Grotesk','Segoe UI',Arial,sans-serif; letter-spacing: 0; }
+      .subtitle { fill: #b5c1cf; font: 500 18px 'Space Grotesk','Segoe UI',Arial,sans-serif; }
+      .section { fill: #8fa0b4; font: 800 13px 'IBM Plex Mono','Consolas',monospace; letter-spacing: 1.5px; }
+      .boxTitle { fill: #f3f7fb; font: 800 22px 'Space Grotesk','Segoe UI',Arial,sans-serif; }
+      .boxText { fill: #b5c1cf; font: 500 15px 'Space Grotesk','Segoe UI',Arial,sans-serif; }
+      .small { fill: #90a3b7; font: 700 12px 'IBM Plex Mono','Consolas',monospace; letter-spacing: 0.5px; }
+      .label { fill: #dff8ff; font: 800 12px 'IBM Plex Mono','Consolas',monospace; letter-spacing: 0.5px; }
+      .laneTitle { fill: #dff8ff; font: 800 16px 'Space Grotesk','Segoe UI',Arial,sans-serif; }
+      .num { fill: #06111a; font: 900 17px 'Space Grotesk','Segoe UI',Arial,sans-serif; }
+      .startEndText { fill: #06111a; font: 900 20px 'Space Grotesk','Segoe UI',Arial,sans-serif; }
+      .lane { fill: rgba(255,255,255,0.025); stroke: rgba(255,255,255,0.08); stroke-width: 1.2; }
+      .box { fill: url(#panel); stroke: rgba(255,255,255,0.14); stroke-width: 1.4; filter: url(#shadow); }
+      .boxPrimary { fill: url(#bluePanel); stroke: rgba(102,225,255,0.36); stroke-width: 1.8; filter: url(#shadow); }
+      .boxData { fill: rgba(8, 24, 20, 0.92); stroke: rgba(97,240,168,0.34); stroke-width: 1.6; filter: url(#shadow); }
+      .boxWarn { fill: rgba(28, 21, 8, 0.92); stroke: rgba(255,197,106,0.36); stroke-width: 1.6; filter: url(#shadow); }
+      .mainLine { stroke: #66e1ff; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowMain); filter: url(#glow); }
+      .dataLine { stroke: #61f0a8; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowData); }
+      .altLine { stroke: #a985ff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 9 9; marker-end: url(#arrowAlt); }
+      .returnLine { stroke: #66e1ff; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 12 8; marker-end: url(#arrowMain); }
+      .thin { stroke: rgba(181,193,207,0.26); stroke-width: 1.3; stroke-dasharray: 5 8; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="1180" fill="url(#bg)"/>
+  <circle cx="285" cy="110" r="310" fill="#2c93ff" opacity="0.16"/>
+  <circle cx="1420" cy="145" r="330" fill="#66e1ff" opacity="0.10"/>
+  <circle cx="1170" cy="1040" r="420" fill="#61f0a8" opacity="0.08"/>
+  <g opacity="0.45">
+    <path d="M0 130H1800M0 260H1800M0 390H1800M0 520H1800M0 650H1800M0 780H1800M0 910H1800M0 1040H1800" stroke="rgba(255,255,255,0.035)"/>
+    <path d="M120 0V1180M240 0V1180M360 0V1180M480 0V1180M600 0V1180M720 0V1180M840 0V1180M960 0V1180M1080 0V1180M1200 0V1180M1320 0V1180M1440 0V1180M1560 0V1180M1680 0V1180" stroke="rgba(255,255,255,0.03)"/>
+  </g>
+
+  <g transform="translate(70 50)">
+    <path d="M0 24C0 10.8 10.8 0 24 0h13c4.8 0 9 4.2 9 9v9h28c4.8 0 9 4.2 9 9s-4.2 9-9 9H46v17h39c4.8 0 9 4.2 9 9s-4.2 9-9 9H46v26c0 5-4 9-9 9s-9-4-9-9V71H9c-5 0-9-4-9-9s4-9 9-9h19V36h-4C10.8 36 0 25.2 0 12v12Z" fill="url(#cyan)" filter="url(#glow)"/>
+    <text x="122" y="38" class="title">FlowBot: arquitectura del sistema</text>
+    <text x="122" y="72" class="subtitle">Diagrama clasico de flujo, con ruta principal, datos, acciones y fallback de IA separados.</text>
+  </g>
+
+  <g transform="translate(60 160)">
+    <rect class="lane" x="0" y="0" width="1680" height="300" rx="22"/>
+    <text x="28" y="34" class="section">RUTA PRINCIPAL - DE ENTRADA A RESPUESTA</text>
+  </g>
+  <g transform="translate(60 500)">
+    <rect class="lane" x="0" y="0" width="1680" height="245" rx="22"/>
+    <text x="28" y="34" class="section">CAPA DE DATOS Y BACKEND</text>
+  </g>
+  <g transform="translate(60 785)">
+    <rect class="lane" x="0" y="0" width="1680" height="260" rx="22"/>
+    <text x="28" y="34" class="section">CAPA DE INTELIGENCIA ARTIFICIAL Y ACCIONES</text>
+  </g>
+
+  <g id="main-flow">
+    <g transform="translate(95 258)">
+      <rect width="112" height="72" rx="36" fill="url(#green)" filter="url(#glow)"/>
+      <text x="56" y="45" text-anchor="middle" class="startEndText">INICIO</text>
+    </g>
+
+    <g transform="translate(260 220)">
+      <rect class="boxPrimary" width="210" height="150" rx="18"/>
+      <circle cx="30" cy="30" r="17" fill="url(#cyan)"/><text x="30" y="36" text-anchor="middle" class="num">1</text>
+      <text x="58" y="37" class="boxTitle">Usuario</text>
+      <text x="26" y="76" class="boxText">Escribe mensaje</text>
+      <text x="26" y="101" class="boxText">o usa controles</text>
+      <text x="26" y="128" class="small">login / comandos / chat</text>
+    </g>
+
+    <g transform="translate(540 220)">
+      <rect class="boxPrimary" width="230" height="150" rx="18"/>
+      <circle cx="30" cy="30" r="17" fill="url(#cyan)"/><text x="30" y="36" text-anchor="middle" class="num">2</text>
+      <text x="58" y="37" class="boxTitle">React UI</text>
+      <text x="26" y="76" class="boxText">App.jsx renderiza chat,</text>
+      <text x="26" y="101" class="boxText">isla dinamica y modales</text>
+      <text x="26" y="128" class="small">modelo / memoria / estado</text>
+    </g>
+
+    <g transform="translate(850 220)">
+      <rect class="boxPrimary" width="250" height="150" rx="18"/>
+      <circle cx="30" cy="30" r="17" fill="url(#cyan)"/><text x="30" y="36" text-anchor="middle" class="num">3</text>
+      <text x="58" y="37" class="boxTitle">Logica chatbot</text>
+      <text x="26" y="76" class="boxText">chatbotLogic.js analiza</text>
+      <text x="26" y="101" class="boxText">mensaje, modo y modelo</text>
+      <text x="26" y="128" class="small">intents + provider fallback</text>
+    </g>
+
+    <g transform="translate(1180 220)">
+      <rect class="boxPrimary" width="240" height="150" rx="18"/>
+      <circle cx="30" cy="30" r="17" fill="url(#cyan)"/><text x="30" y="36" text-anchor="middle" class="num">4</text>
+      <text x="58" y="37" class="boxTitle">Decision</text>
+      <text x="26" y="76" class="boxText">Accion local</text>
+      <text x="26" y="101" class="boxText">o consulta IA</text>
+      <text x="26" y="128" class="small">resolveActions / fetchGeminiAI</text>
+    </g>
+
+    <g transform="translate(1510 258)">
+      <rect width="112" height="72" rx="36" fill="url(#cyan)" filter="url(#glow)"/>
+      <text x="56" y="45" text-anchor="middle" class="startEndText">FIN</text>
+    </g>
+
+    <path class="mainLine" d="M207 294H260"/>
+    <path class="mainLine" d="M470 294H540"/>
+    <path class="mainLine" d="M770 294H850"/>
+    <path class="mainLine" d="M1100 294H1180"/>
+    <path class="mainLine" d="M1420 294H1510"/>
+    <text x="482" y="274" class="label">mensaje</text>
+    <text x="783" y="274" class="label">estado UI</text>
+    <text x="1114" y="274" class="label">analisis</text>
+    <text x="1435" y="274" class="label">respuesta/render</text>
+  </g>
+
+  <g id="data-layer">
+    <g transform="translate(205 555)">
+      <rect class="boxData" width="250" height="130" rx="18"/>
+      <circle cx="30" cy="30" r="17" fill="url(#green)"/><text x="30" y="36" text-anchor="middle" class="num">A</text>
+      <text x="58" y="37" class="boxTitle">Memoria local</text>
+      <text x="26" y="74" class="boxText">LocalStorage guarda</text>
+      <text x="26" y="99" class="boxText">chats y cola offline</text>
+      <text x="26" y="118" class="small">storage.js</text>
+    </g>
+
+    <g transform="translate(545 555)">
+      <rect class="boxData" width="265" height="130" rx="18"/>
+      <circle cx="30" cy="30" r="17" fill="url(#green)"/><text x="30" y="36" text-anchor="middle" class="num">B</text>
+      <text x="58" y="37" class="boxTitle">Contexto reciente</text>
+      <text x="26" y="74" class="boxText">Ventana de mensajes</text>
+      <text x="26" y="99" class="boxText">para continuaciones</text>
+      <text x="26" y="118" class="small">contextPrompt.js</text>
+    </g>
+
+    <g transform="translate(900 555)">
+      <rect class="boxData" width="275" height="130" rx="18"/>
+      <circle cx="30" cy="30" r="17" fill="url(#green)"/><text x="30" y="36" text-anchor="middle" class="num">C</text>
+      <text x="58" y="37" class="boxTitle">Backend Express</text>
+      <text x="26" y="74" class="boxText">Auth, perfil, chats,</text>
+      <text x="26" y="99" class="boxText">mensajes y health</text>
+      <text x="26" y="118" class="small">server.js</text>
+    </g>
+
+    <g transform="translate(1265 555)">
+      <rect class="boxData" width="275" height="130" rx="18"/>
+      <circle cx="30" cy="30" r="17" fill="url(#green)"/><text x="30" y="36" text-anchor="middle" class="num">D</text>
+      <text x="58" y="37" class="boxTitle">Persistencia</text>
+      <text x="26" y="74" class="boxText">SQL Server si existe</text>
+      <text x="26" y="99" class="boxText">Map en memoria si falla</text>
+      <text x="26" y="118" class="small">Users / Chats / Messages</text>
+    </g>
+
+    <path class="dataLine" d="M655 370V555"/>
+    <text x="675" y="482" class="label">lee/escribe historial</text>
+    <path class="dataLine" d="M975 370V555"/>
+    <text x="995" y="482" class="label">sync si hay backend</text>
+    <path class="dataLine" d="M1175 620H1265"/>
+    <text x="1190" y="600" class="label">DB</text>
+    <path class="dataLine" d="M455 620H545"/>
+    <text x="468" y="600" class="label">contexto</text>
+  </g>
+
+  <g id="ai-actions-layer">
+    <g transform="translate(205 850)">
+      <rect class="boxWarn" width="310" height="145" rx="18"/>
+      <circle cx="30" cy="30" r="17" fill="#ffc56a"/><text x="30" y="36" text-anchor="middle" class="num">5A</text>
+      <text x="68" y="37" class="boxTitle">Actions System</text>
+      <text x="26" y="78" class="boxText">fullscreen, sidebar, reload,</text>
+      <text x="26" y="103" class="boxText">print, scroll, Google, YouTube, timer</text>
+      <text x="26" y="128" class="small">acciones locales del navegador</text>
+    </g>
+
+    <g transform="translate(650 850)">
+      <rect class="box" width="270" height="145" rx="18"/>
+      <circle cx="30" cy="30" r="17" fill="#a985ff"/><text x="30" y="36" text-anchor="middle" class="num">5B</text>
+      <text x="68" y="37" class="boxTitle">Modo directo</text>
+      <text x="26" y="78" class="boxText">El frontend llama proveedor</text>
+      <text x="26" y="103" class="boxText">si VITE_AI_EXECUTION_MODE</text>
+      <text x="26" y="128" class="small">local / hybrid</text>
+    </g>
+
+    <g transform="translate(1010 850)">
+      <rect class="box" width="280" height="145" rx="18"/>
+      <circle cx="30" cy="30" r="17" fill="#a985ff"/><text x="30" y="36" text-anchor="middle" class="num">5C</text>
+      <text x="68" y="37" class="boxTitle">Proxy IA</text>
+      <text x="26" y="78" class="boxText">/api/flowbot-proxy rota</text>
+      <text x="26" y="103" class="boxText">modelos y API keys</text>
+      <text x="26" y="128" class="small">server-side fallback</text>
+    </g>
+
+    <g transform="translate(1390 820)">
+      <rect class="boxPrimary" width="270" height="205" rx="18"/>
+      <circle cx="30" cy="30" r="17" fill="url(#cyan)"/><text x="30" y="36" text-anchor="middle" class="num">6</text>
+      <text x="58" y="37" class="boxTitle">Proveedores IA</text>
+      <text x="26" y="78" class="boxText">Gemini 3.1 / 2.5 / 2.0</text>
+      <text x="26" y="108" class="boxText">Groq: GPT OSS / Llama</text>
+      <text x="26" y="138" class="boxText">Devuelve texto, modelo,</text>
+      <text x="26" y="163" class="boxText">fallbackReason o error</text>
+      <text x="26" y="188" class="small">Gemini API + Groq OpenAI API</text>
+    </g>
+
+    <path class="altLine" d="M1250 370C1250 485 360 735 360 850"/>
+    <text x="390" y="794" class="label">si detecta accion</text>
+    <path class="altLine" d="M1300 370C1300 720 790 740 790 850"/>
+    <text x="818" y="792" class="label">consulta directa</text>
+    <path class="altLine" d="M1325 370C1325 710 1150 740 1150 850"/>
+    <text x="1168" y="792" class="label">consulta proxy</text>
+    <path class="altLine" d="M920 922H1010"/>
+    <text x="936" y="902" class="label">fallback</text>
+    <path class="altLine" d="M1290 922H1390"/>
+    <text x="1307" y="902" class="label">Gemini/Groq</text>
+    <path class="altLine" d="M920 922C1075 1038 1280 1044 1390 970"/>
+    <path class="returnLine" d="M1525 820C1525 745 1460 710 1355 690C1260 672 1240 620 1240 520C1240 455 1320 410 1395 370"/>
+    <text x="1415" y="725" class="label">respuesta IA vuelve a React</text>
+  </g>
+
+  <g id="final-render">
+    <g transform="translate(1428 410)">
+      <rect class="boxPrimary" width="250" height="95" rx="18"/>
+      <text x="26" y="36" class="boxTitle">Render final</text>
+      <text x="26" y="66" class="boxText">Mensaje en UI + guardado</text>
+    </g>
+    <path class="mainLine" d="M1535 370V410"/>
+    <path class="dataLine" d="M1465 505V555"/>
+  </g>
+
+  <g id="legend" transform="translate(95 1080)">
+    <rect width="920" height="56" rx="18" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.10)"/>
+    <path d="M24 19H84" class="mainLine"/>
+    <text x="104" y="24" class="small">flujo principal</text>
+    <path d="M242 19H302" class="dataLine"/>
+    <text x="322" y="24" class="small">datos / persistencia</text>
+    <path d="M500 19H560" class="altLine"/>
+    <text x="580" y="24" class="small">ruta alternativa o fallback</text>
+    <path d="M24 42H84" class="returnLine"/>
+    <text x="104" y="46" class="small">respuesta de retorno</text>
+  </g>
+</svg>
