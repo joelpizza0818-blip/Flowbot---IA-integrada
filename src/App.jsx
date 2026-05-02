@@ -12,6 +12,7 @@ import { CONTEXT_WINDOW_SIZE, getContextUsage } from './contextPrompt';
 import { checkBackendAvailability } from './appMode';
 import { changeUserPassword, clearStoredAuthUser, getCurrentUser, getUserProfile, loginUser, logoutUser, registerUser } from './auth';
 import { storage } from './storage';
+import { useShortcuts } from './shortcuts';
 import './App.css';
 import './flowbot.animations.css';
 
@@ -194,6 +195,7 @@ function App() {
   const [profileError, setProfileError] = useState('');
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordStatus, setPasswordStatus] = useState('');
+  const [accountBenefitsOpen, setAccountBenefitsOpen] = useState(false);
 
   const [thinkingMode, setThinkingMode]       = useState('normal');
   const [preferredModel, setPreferredModel]   = useState('auto');
@@ -893,7 +895,7 @@ function App() {
   ];
 
   const modelOptions = [
-    { key: 'auto', label: 'Automático', desc: 'FlowBot elige entre Gemini y GPT OSS según la consulta.' },
+    { key: 'auto', label: 'Automático', desc: 'El modelo es elegido de manera automatica ' },
     { key: 'gemini-3.1', label: 'Gemini 3.1', desc: 'Más fuerte para arquitectura, UI compleja y respuestas largas.' },
     { key: 'groq', label: 'GPT OSS / Llama', desc: 'Más rápido para debugging, dudas breves y consultas iterativas.' },
   ];
@@ -911,6 +913,7 @@ function App() {
   const isEmptyState = !hasConversation;
   const visibleMessages = messages;
   const hasActiveAccount = Boolean(backendAvailable && authUser?.id && !authUser?.isGuest);
+  const canSelectModel = hasActiveAccount;
   const effectiveContextWindowSize = CONTEXT_WINDOW_SIZE + (hasActiveAccount ? ACCOUNT_MEMORY_BONUS : 0);
   const { usedSlots: displayedContextSlots } = getContextUsage(messages, effectiveContextWindowSize);
   const liveStatusItems = [envInfo, connectivityInfo];
@@ -926,6 +929,17 @@ function App() {
 
   const activeModelOption = modelOptions.find((option) => option.key === preferredModel) || modelOptions[0];
   const activeThinkingOption = thinkingOptions.find((option) => option.id === thinkingMode) || thinkingOptions[0];
+
+  useShortcuts({
+    onClearChat: handleClearChat,
+    onToggleMemory: () => setMemoryPreviewEnabled((v) => !v),
+    onToggleEphemeral: () => setIsEphemeralMode((v) => !v),
+    onOpenModelSelector: () => {
+      setModelDropdownOpen((value) => !value);
+      setThinkingDropdownOpen(false);
+    },
+    hasActiveAccount,
+  });
 
   const composerPlaceholder =
     activeModelOption.key === 'gemini-3.1'
@@ -945,14 +959,14 @@ function App() {
       heroCompact: 'Version en linea: autenticacion activa y chats persistentes por usuario.',
       heroDesktop: 'Version en linea: autenticacion, persistencia y continuidad real de historiales entre sesiones.',
       hintCompact: 'Modo SaaS activo. Enter para enviar.',
-      hintDesktop: 'Modo en linea: historial por usuario, reapertura de chats y sincronizacion con backend.',
+      hintDesktop: 'Modo en linea: historial por usuario, reapertura de chats y sincronizacion con el servidor.',
       statusIdle: 'Trabaja con contexto persistente y sesiones autenticadas.',
     }
     : {
       heroCompact: 'Version local: guardado por dispositivo con fallback automatico.',
-      heroDesktop: 'Version local: chatbot funcional sin backend, usando localStorage por dispositivo para continuar tus chats.',
+      heroDesktop: 'Version local: chatbot funcional sin servidor, usando localStorage por dispositivo para continuar tus chats.',
       hintCompact: 'Modo local activo. Enter para enviar.',
-      hintDesktop: 'Modo local: historial por dispositivo y funcionamiento sin backend.',
+      hintDesktop: 'Modo local: historial por dispositivo y funcionamiento sin servidor.',
       statusIdle: 'Pega codigo, describe el bug o pide la feature completa.',
     };
   const heroDescription = isCompactViewport ? programCopy.heroCompact : programCopy.heroDesktop;
@@ -1229,7 +1243,7 @@ function App() {
               </div>
               <div>
                 <span>Cuenta creada</span>
-                <strong>{profileStats.createdAt ? new Date(profileStats.createdAt).toLocaleDateString('es-ES') : 'Disponible con backend'}</strong>
+                <strong>{profileStats.createdAt ? new Date(profileStats.createdAt).toLocaleDateString('es-ES') : 'Disponible conectado a servidor'}</strong>
               </div>
             </div>
 
@@ -1251,6 +1265,80 @@ function App() {
               {passwordStatus && <p className="profile-success">{passwordStatus}</p>}
               <button type="submit" className="profile-submit-btn">Actualizar password</button>
             </form>
+          </section>
+        </div>
+      )}
+
+      {/* Benefits modal */}
+      {accountBenefitsOpen && (
+        <div className="benefits-modal-overlay" onClick={() => setAccountBenefitsOpen(false)}>
+          <section className="benefits-modal-content" onClick={(e) => e.stopPropagation()} aria-label="Ventajas de cuenta">
+            <header className="benefits-modal-header">
+              <div className="benefits-title-row">
+                <div className="benefits-title-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="modal-eyebrow">FlowBot Pro</p>
+                  <h3>Ventajas de iniciar con cuenta</h3>
+                </div>
+              </div>
+              <button className="profile-modal-close" onClick={() => setAccountBenefitsOpen(false)} aria-label="Cerrar ventajas">X</button>
+            </header>
+
+            <ul className="benefits-list benefits-list-modal">
+              <li className="benefit-item benefit-item-modal">
+                <div className="benefit-icon benefit-icon-cloud">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+                  </svg>
+                </div>
+                <div className="benefit-copy">
+                  <strong>Chats guardados globalmente</strong>
+                  <span>Tus conversaciones se sincronizan en la nube y puedes acceder desde cualquier dispositivo. Nunca pierdas una conversación.</span>
+                </div>
+              </li>
+              <li className="benefit-item benefit-item-modal">
+                <div className="benefit-icon benefit-icon-memory">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />
+                    <path d="M12 6v6l4 2" />
+                  </svg>
+                </div>
+                <div className="benefit-copy">
+                  <strong>+{ACCOUNT_MEMORY_BONUS} slots de contexto</strong>
+                  <span>Memoria expandida de {CONTEXT_WINDOW_SIZE} a {CONTEXT_WINDOW_SIZE + ACCOUNT_MEMORY_BONUS} mensajes para conversaciones mas largas y coherentes.</span>
+                </div>
+              </li>
+              <li className="benefit-item benefit-item-modal">
+                <div className="benefit-icon benefit-icon-model">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                </div>
+                <div className="benefit-copy">
+                  <strong>Selección manual de modelo</strong>
+                  <span>Elige entre Gemini 3.1, GPT OSS, Llama y mas. Sin cuenta solo puedes usar el modo automático.</span>
+                </div>
+              </li>
+              <li className="benefit-item benefit-item-modal">
+                <div className="benefit-icon benefit-icon-fire">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z" />
+                  </svg>
+                </div>
+                <div className="benefit-copy">
+                  <strong>Mensajes efímeros</strong>
+                  <span>Los mensajes desaparecen por completo después de ser leídos para mayor privacidad.</span>
+                </div>
+              </li>
+            </ul>
+
+            <footer className="benefits-modal-footer">
+              <p className="benefits-footer-hint">Conecta un servidor para registrarte y desbloquear estas funciones.</p>
+            </footer>
           </section>
         </div>
       )}
@@ -1280,12 +1368,26 @@ function App() {
           <div className="sidebar-section-body">
             <div className="sidebar-mode-list">
               {modelOptions.map((option) => (
-                <button key={option.key} className={`sidebar-mode-btn ${preferredModel === option.key ? 'sidebar-mode-active' : ''}`} onClick={() => { setPreferredModel(option.key); if (viewportMetrics.isCompact) setSidebarOpen(false); }}>
+                <button
+                  key={option.key}
+                  className={`sidebar-mode-btn ${preferredModel === option.key ? 'sidebar-mode-active' : ''} ${!canSelectModel && option.key !== 'auto' ? 'sidebar-mode-locked' : ''}`}
+                  onClick={() => {
+                    if (!canSelectModel && option.key !== 'auto') return;
+                    setPreferredModel(option.key); if (viewportMetrics.isCompact) setSidebarOpen(false);
+                  }}
+                  title={!canSelectModel && option.key !== 'auto' ? 'Inicia sesión con cuenta para seleccionar modelo' : ''}
+                >
                   <ModelIcon group={option.key} size={18} />
                   <div className="sidebar-mode-info">
                     <span className="sidebar-mode-label">{option.label}</span>
                     <span className="sidebar-mode-desc">{option.desc}</span>
                   </div>
+                  {!canSelectModel && option.key !== 'auto' && (
+                    <svg className="sidebar-mode-lock" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                  )}
                 </button>
               ))}
             </div>
@@ -1413,11 +1515,23 @@ function App() {
                   </>
                 )}
                 <button type="button" className="sidebar-auth-btn sidebar-auth-btn-danger" onClick={() => { void handleLogout(); }}>
-                  Logout
+                  Cerrar sesión
                 </button>
               </div>
             ) : (
-              <p className="recent-chat-empty">Backend no disponible para autenticación.</p>
+              <div className="sidebar-offline-account">
+                <p className="recent-chat-empty">Servidor no disponible para autenticación.</p>
+                <button
+                  type="button"
+                  className="sidebar-auth-btn sidebar-benefits-toggle"
+                  onClick={() => { setAccountBenefitsOpen(true); setSidebarOpen(false); }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z" />
+                  </svg>
+                  <span>Ver ventajas de cuenta</span>
+                </button>
+              </div>
             )}
           </div>
         </details>
@@ -1425,7 +1539,10 @@ function App() {
         <footer className="sidebar-footer">
           <button className="clear-chat-btn" onClick={handleClearChat}>
             <span className="btn-icon"><IntentIcon name="clear" size={16} /></span>
-            <span>Nueva conversación</span>
+            <div className="clear-chat-copy" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1 }}>
+              <span>Nueva conversación</span>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Ctrl+Shift+T</span>
+            </div>
           </button>
         </footer>
       </aside>
@@ -1523,7 +1640,7 @@ function App() {
                       </>
                     )}
                     <button type="button" className="dynamic-island-action dynamic-island-action-danger" onClick={handleLogout}>
-                      <span>Logout</span>
+                      <span>Cerrar sesión</span>
                     </button>
                   </>
                 )}
@@ -1735,17 +1852,32 @@ function App() {
 
                 <div className="selector-wrapper">
                   <button
-                    className={`selector-btn ${preferredModel !== 'auto' ? 'selector-btn-active' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); setModelDropdownOpen((value) => !value); setThinkingDropdownOpen(false); }}
-                    title="Modelo"
+                    className={`selector-btn ${preferredModel !== 'auto' ? 'selector-btn-active' : ''} ${!canSelectModel ? 'selector-btn-locked' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!canSelectModel) return;
+                      setModelDropdownOpen((value) => !value); setThinkingDropdownOpen(false);
+                    }}
+                    title={canSelectModel ? 'Modelo' : 'Inicia sesión para seleccionar modelo'}
                   >
-                    <ModelIcon group={activeModelOption.key} size={14} />
+                    {!canSelectModel ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="selector-lock-icon">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    ) : (
+                      <ModelIcon group={activeModelOption.key} size={14} />
+                    )}
                     <span className="selector-label">{activeModelOption.label}</span>
-                    <svg className="selector-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
+                    {canSelectModel ? (
+                      <svg className="selector-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    ) : (
+                      <span className="selector-lock-hint">PRO</span>
+                    )}
                   </button>
-                  {modelDropdownOpen && (
+                  {modelDropdownOpen && canSelectModel && (
                     <div className="selector-dropdown" onClick={(e) => e.stopPropagation()}>
                       {modelOptions.map((option) => (
                         <button key={option.key} className={`dropdown-option ${preferredModel === option.key ? 'dropdown-option-active' : ''}`} onClick={() => { setPreferredModel(option.key); setModelDropdownOpen(false); }}>
@@ -1761,14 +1893,18 @@ function App() {
                   )}
                 </div>
 
-                <div className={`memory-pill ${isEphemeralMode ? 'memory-pill-on' : 'memory-pill-off'}`}>
+                <div className={`memory-pill ${isEphemeralMode ? 'memory-pill-on' : 'memory-pill-off'} ${!canSelectModel ? 'selector-btn-locked' : ''}`} title={canSelectModel ? 'Ctrl+Shift+J para cambiar' : 'Inicia sesión para usar efímero'}>
                   <span className="memory-pill-label">Efímero</span>
-                  <button type="button" className={`memory-toggle ${isEphemeralMode ? 'memory-toggle-on' : ''}`} aria-pressed={isEphemeralMode} onClick={() => setIsEphemeralMode((v) => !v)}>
-                    <span></span>
-                  </button>
+                  {!canSelectModel ? (
+                    <span className="selector-lock-hint" style={{ marginLeft: 4 }}>PRO</span>
+                  ) : (
+                    <button type="button" className={`memory-toggle ${isEphemeralMode ? 'memory-toggle-on' : ''}`} aria-pressed={isEphemeralMode} onClick={() => setIsEphemeralMode((v) => !v)}>
+                      <span></span>
+                    </button>
+                  )}
                 </div>
 
-                <div className={`memory-pill ${memoryPreviewEnabled ? 'memory-pill-on' : 'memory-pill-off'}`}>
+                <div className={`memory-pill ${memoryPreviewEnabled ? 'memory-pill-on' : 'memory-pill-off'}`} title="Ctrl+Shift+K para cambiar">
                   <span className="memory-pill-label">Memoria</span>
                   <button type="button" className={`memory-toggle ${memoryPreviewEnabled ? 'memory-toggle-on' : ''}`} aria-pressed={memoryPreviewEnabled} onClick={() => setMemoryPreviewEnabled((value) => !value)}>
                     <span></span>

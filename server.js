@@ -238,7 +238,12 @@ async function listChats(userId) {
     WHERE UserId = @UserId
     ORDER BY CreatedAt ASC;
   `);
-  return result.recordset || [];
+  return (result.recordset || []).map((row) => ({
+    id: row.Id || row.id,
+    userId: row.UserId || row.userId,
+    title: row.Title || row.title || 'Nuevo chat',
+    createdAt: row.CreatedAt || row.createdAt,
+  }));
 }
 
 async function saveChat({ id, userId, title }) {
@@ -273,7 +278,14 @@ async function saveChat({ id, userId, title }) {
     END
     SELECT Id, UserId, Title, CreatedAt FROM Chats WHERE Id = @ChatId;
   `);
-  return result.recordset?.[0] || null;
+  const row = result.recordset?.[0];
+  if (!row) return null;
+  return {
+    id: row.Id || row.id,
+    userId: row.UserId || row.userId,
+    title: row.Title || row.title || 'Nuevo chat',
+    createdAt: row.CreatedAt || row.createdAt,
+  };
 }
 
 async function listMessages(chatId) {

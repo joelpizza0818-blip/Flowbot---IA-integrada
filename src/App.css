@@ -1413,6 +1413,255 @@ textarea {
   white-space: nowrap;
 }
 
+.sidebar-offline-account {
+  display: grid;
+  gap: 10px;
+}
+
+.sidebar-benefits-toggle {
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(255, 179, 0, 0.08), rgba(255, 145, 0, 0.05));
+  border-color: rgba(255, 179, 0, 0.28);
+  color: #ffe0a0;
+}
+
+.sidebar-benefits-toggle:hover {
+  border-color: rgba(255, 179, 0, 0.52);
+  background: linear-gradient(135deg, rgba(255, 179, 0, 0.14), rgba(255, 145, 0, 0.1));
+  color: #fff1d0;
+}
+
+.account-benefits-panel {
+  border-radius: 16px;
+  border: 1px solid rgba(102, 225, 255, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(102, 225, 255, 0.06), transparent 50%),
+    radial-gradient(circle at bottom left, rgba(255, 179, 0, 0.04), transparent 50%),
+    linear-gradient(180deg, rgba(12, 18, 28, 0.92), rgba(8, 14, 22, 0.88));
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  animation: benefitsPanelIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes benefitsPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.benefits-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--accent);
+}
+
+.benefits-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.benefit-item {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.benefit-icon {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.benefit-icon-cloud {
+  background: linear-gradient(135deg, rgba(97, 240, 168, 0.16), rgba(60, 200, 130, 0.08));
+  color: var(--success);
+}
+
+.benefit-icon-memory {
+  background: linear-gradient(135deg, rgba(102, 225, 255, 0.16), rgba(44, 147, 255, 0.08));
+  color: var(--accent);
+}
+
+.benefit-icon-model {
+  background: linear-gradient(135deg, rgba(255, 179, 0, 0.16), rgba(255, 145, 0, 0.08));
+  color: #ffb300;
+}
+
+.benefit-icon-fire {
+  background: linear-gradient(135deg, rgba(255, 70, 40, 0.16), rgba(200, 40, 20, 0.08));
+  color: #ff6a4d;
+}
+
+.benefit-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.benefit-copy strong {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.benefit-copy span {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Model selector lock states */
+.sidebar-mode-locked {
+  opacity: 0.48;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.sidebar-mode-locked:hover {
+  transform: none;
+  background: rgba(255, 255, 255, 0.03);
+  border-color: transparent;
+}
+
+.sidebar-mode-lock {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.sidebar-mode-btn {
+  position: relative;
+}
+
+.selector-btn-locked {
+  opacity: 0.62;
+  cursor: not-allowed;
+  border-color: rgba(255, 179, 0, 0.18);
+}
+
+.selector-btn-locked:hover {
+  border-color: rgba(255, 179, 0, 0.28);
+  color: var(--text-secondary);
+}
+
+.selector-lock-icon {
+  color: var(--text-muted);
+  opacity: 0.82;
+}
+
+.selector-lock-hint {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(255, 179, 0, 0.22), rgba(255, 145, 0, 0.12));
+  color: #ffb300;
+  border: 1px solid rgba(255, 179, 0, 0.24);
+  line-height: 1.2;
+}
+
+/* Benefits modal */
+.benefits-modal-content {
+  border: 1px solid rgba(102, 225, 255, 0.18);
+  background:
+    radial-gradient(circle at top right, rgba(102, 225, 255, 0.07), transparent 45%),
+    radial-gradient(circle at bottom left, rgba(255, 179, 0, 0.05), transparent 45%),
+    linear-gradient(180deg, rgba(12, 18, 28, 0.96), rgba(8, 14, 22, 0.94));
+  backdrop-filter: blur(22px);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(102, 225, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  animation: benefitsPanelIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.benefits-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.benefits-title-icon {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(255, 179, 0, 0.18), rgba(255, 145, 0, 0.08));
+  border: 1px solid rgba(255, 179, 0, 0.22);
+  color: #ffb300;
+}
+
+.benefits-list-modal {
+  margin-top: 20px;
+  gap: 16px;
+}
+
+.benefit-item-modal {
+  grid-template-columns: 40px 1fr;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.benefit-item-modal:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.benefit-item-modal .benefit-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.benefit-item-modal .benefit-copy strong {
+  font-size: 0.9rem;
+}
+
+.benefit-item-modal .benefit-copy span {
+  font-size: 0.82rem;
+}
+
+.benefits-modal-footer {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(102, 225, 255, 0.1);
+}
+
+.benefits-footer-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+}
+
 .profile-avatar {
   width: 58px;
   height: 58px;
@@ -2514,7 +2763,8 @@ textarea {
 
 .timer-modal-overlay,
 .search-modal-overlay,
-.profile-modal-overlay {
+.profile-modal-overlay,
+.benefits-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -2528,7 +2778,8 @@ textarea {
 
 .timer-modal-content,
 .search-modal-content,
-.profile-modal-content {
+.profile-modal-content,
+.benefits-modal-content {
   width: min(100%, 520px);
   border-radius: 24px;
   padding: 20px;
@@ -2537,6 +2788,7 @@ textarea {
 .timer-modal-header,
 .search-modal-header,
 .profile-modal-header,
+.benefits-modal-header,
 .timer-modal-footer,
 .search-modal-footer {
   display: flex;
