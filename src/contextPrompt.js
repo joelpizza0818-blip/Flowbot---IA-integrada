@@ -44,31 +44,33 @@ function isLikelyEllipticalFollowUp(message) {
   return !SELF_CONTAINED_QUESTION_PATTERN.test(message);
 }
 
-export function getContextWindowMessages(conversationHistory = []) {
+export function getContextWindowMessages(conversationHistory = [], contextWindowSize = CONTEXT_WINDOW_SIZE) {
   const normalizedHistory = normalizeConversationHistory(conversationHistory);
   if (normalizedHistory.length === 0) {
     return [];
   }
 
-  return normalizedHistory.slice(-CONTEXT_WINDOW_SIZE);
+  const safeWindowSize = Math.max(1, Number(contextWindowSize) || CONTEXT_WINDOW_SIZE);
+  return normalizedHistory.slice(-safeWindowSize);
 }
 
-export function getContextUsage(conversationHistory = []) {
-  const contextMessages = getContextWindowMessages(conversationHistory);
-  const usedSlots = Math.min(contextMessages.length, CONTEXT_WINDOW_SIZE);
+export function getContextUsage(conversationHistory = [], contextWindowSize = CONTEXT_WINDOW_SIZE) {
+  const safeWindowSize = Math.max(1, Number(contextWindowSize) || CONTEXT_WINDOW_SIZE);
+  const contextMessages = getContextWindowMessages(conversationHistory, safeWindowSize);
+  const usedSlots = Math.min(contextMessages.length, safeWindowSize);
 
   return {
     usedSlots,
-    remainingSlots: Math.max(CONTEXT_WINDOW_SIZE - usedSlots, 0),
+    remainingSlots: Math.max(safeWindowSize - usedSlots, 0),
     contextMessages,
   };
 }
 
-export function shouldUseConversationContext(userMessage, conversationHistory = []) {
+export function shouldUseConversationContext(userMessage, conversationHistory = [], contextWindowSize = CONTEXT_WINDOW_SIZE) {
   const trimmed = typeof userMessage === 'string' ? userMessage.trim() : '';
   if (!trimmed) return false;
 
-  const normalizedHistory = getContextWindowMessages(conversationHistory);
+  const normalizedHistory = getContextWindowMessages(conversationHistory, contextWindowSize);
   const previousMessages = normalizedHistory.slice(0, -1);
   if (previousMessages.length === 0) {
     return false;
@@ -82,11 +84,11 @@ export function shouldUseConversationContext(userMessage, conversationHistory = 
   );
 }
 
-export function buildRecentContextPrompt(userMessage, conversationHistory = []) {
+export function buildRecentContextPrompt(userMessage, conversationHistory = [], contextWindowSize = CONTEXT_WINDOW_SIZE) {
   const trimmed = typeof userMessage === 'string' ? userMessage.trim() : '';
   if (!trimmed) return '';
 
-  const recentMessages = getContextWindowMessages(conversationHistory);
+  const recentMessages = getContextWindowMessages(conversationHistory, contextWindowSize);
   const lastMessage = recentMessages[recentMessages.length - 1];
 
   if (!lastMessage || lastMessage.sender !== 'user') {
@@ -102,7 +104,7 @@ export function buildRecentContextPrompt(userMessage, conversationHistory = []) 
     .map((message) => `${message.sender === 'user' ? 'Usuario' : 'FlowBot'}: ${message.text}`)
     .join('\n');
 
-  const contextHint = shouldUseConversationContext(trimmed, recentMessages)
+  const contextHint = shouldUseConversationContext(trimmed, recentMessages, contextWindowSize)
     ? 'El mensaje actual parece una continuacion o una edicion breve. Usa el historial para completar lo implicito.'
     : 'El mensaje actual parece autosuficiente. Responde directo y usa el historial solo si agrega claridad.';
 

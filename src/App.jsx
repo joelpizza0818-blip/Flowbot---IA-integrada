@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import FlowLogo from './components/FlowLogo';
 import ChatMessage from './components/ChatMessage';
 import IntentIcon from './components/IntentIcon';
@@ -10,13 +10,14 @@ import {
 } from './chatbotLogic';
 import { CONTEXT_WINDOW_SIZE, getContextUsage } from './contextPrompt';
 import { checkBackendAvailability } from './appMode';
-import { clearStoredAuthUser, getCurrentUser, loginUser, logoutUser, registerUser } from './auth';
+import { changeUserPassword, clearStoredAuthUser, getCurrentUser, getUserProfile, loginUser, logoutUser, registerUser } from './auth';
 import { storage } from './storage';
 import './App.css';
 import './flowbot.animations.css';
 
 const MOBILE_BREAKPOINT        = 768;
 const IDLE_TIMEOUT_MS          = 10000;
+const ACCOUNT_MEMORY_BONUS     = 4;
 
 function getEnvironmentInfo({ backendAvailable, isOnline }) {
   const host = window.location.hostname;
@@ -27,7 +28,7 @@ function getEnvironmentInfo({ backendAvailable, isOnline }) {
       label: 'En linea',
       detail: isDeployedHost
         ? 'SaaS conectado: autenticacion activa y chats persistentes.'
-        : 'Backend SQL activo con historial por usuario.',
+        : 'Backend activo con historial por usuario.',
       isLocal: false,
       className: 'is-deployed',
       mode: 'online',
@@ -78,12 +79,26 @@ function randomBetween(min, max) {
   return Math.floor(min + Math.random() * (max - min + 1));
 }
 
-function createWelcomeMessage() {
-  return {
-    id: 0, sender: 'bot',
-    text: '**Bienvenido a FlowBot.** Estoy listo para ayudarte a crear interfaces, depurar errores, explicar código y aterrizar ideas web en respuestas accionables.',
-    iconName: 'ayuda', intents: [], time: getTimeString(),
-  };
+function isWelcomeMessage(message) {
+  return (
+    message?.sender === 'bot' &&
+    (message.id === 0 || message.id === '0') &&
+    typeof message.text === 'string' &&
+    message.text.includes('Bienvenido a FlowBot')
+  );
+}
+
+function removeWelcomeMessages(messages = []) {
+  return messages.filter((message) => !isWelcomeMessage(message));
+}
+
+function getProfileInitials(name = '') {
+  const parts = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return '?';
+  return parts.slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 }
 
 function ThinkingModeIcon({ mode, size = 16 }) {
@@ -149,7 +164,7 @@ function ModelIcon({ group, size = 16 }) {
   );
 }
 
-// â”€â”€ App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// App
 function App() {
   const [messages, setMessages]         = useState([]);
   const [input, setInput]               = useState('');
@@ -173,6 +188,12 @@ function App() {
   const [backendAvailable, setBackendAvailable] = useState(false);
   const [authUser, setAuthUser] = useState(null);
   const [authErrorMessage, setAuthErrorMessage] = useState('');
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordStatus, setPasswordStatus] = useState('');
 
   const [thinkingMode, setThinkingMode]       = useState('normal');
   const [preferredModel, setPreferredModel]   = useState('auto');
@@ -181,7 +202,12 @@ function App() {
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [islandOpen, setIslandOpen] = useState(false);
-  const [islandX, setIslandX] = useState(() => Math.max(88, Math.round(window.innerWidth / 2)));
+  const [islandPosition, setIslandPosition] = useState(() => ({
+    x: window.innerWidth <= MOBILE_BREAKPOINT
+      ? Math.max(88, Math.round(window.innerWidth / 2))
+      : Math.max(88, window.innerWidth - 96),
+    y: 92,
+  }));
   const [isGreetingWaveActive, setIsGreetingWaveActive] = useState(false);
 
   // Mascot mood state
@@ -197,7 +223,7 @@ function App() {
   const ambientMoodEndTimerRef = useRef(null);
   const hasPlayedGreetingRef = useRef(false);
   const envInfo = getEnvironmentInfo({ backendAvailable, isOnline: connectivityInfo.isOnline });
-  const hasConversation = messages.length > 1;
+  const hasConversation = messages.length > 0;
 
   const handleEphemeralStatus = useCallback((status) => {
     if (status === 'revealed') {
@@ -227,10 +253,14 @@ function App() {
   const wasCompactRef         = useRef(null);
   const [composerHeight, setComposerHeight] = useState(0);
 
-  const clampIslandX = useCallback((x) => {
+  const clampIslandPosition = useCallback((position) => {
     const margin = 12;
     const halfWidth = 88 / 2;
-    return Math.max(margin + halfWidth, Math.min(window.innerWidth - margin - halfWidth, x));
+    const halfHeight = 88 / 2;
+    return {
+      x: Math.max(margin + halfWidth, Math.min(window.innerWidth - margin - halfWidth, position.x)),
+      y: Math.max(margin + halfHeight, Math.min(window.innerHeight - margin - halfHeight, position.y)),
+    };
   }, []);
 
   const sortChatsByDate = useCallback((chats) => (
@@ -331,7 +361,7 @@ function App() {
       setRecentChats(sortChatsByDate(chats));
       await storage.syncOfflineChats(user.id);
 
-      const storedMessages = await storage.getMessages(activeChat.id);
+      const storedMessages = removeWelcomeMessages(await storage.getMessages(activeChat.id));
       if (!mounted) return;
 
       setMessages(storedMessages);
@@ -361,14 +391,17 @@ function App() {
     const update = () => {
       const nextMetrics = getViewportMetrics();
       setViewportMetrics(nextMetrics);
-      setIslandX((current) => clampIslandX(current));
+      setIslandPosition((current) => clampIslandPosition(current));
       if (nextMetrics.isCompact) setSidebarOpen(false);
 
       // When entering mobile layout, start the island centered but still draggable.
       // Avoid doing this on every resize to keep the user's chosen position.
       if (wasCompactRef.current === null) wasCompactRef.current = nextMetrics.isCompact;
       if (!wasCompactRef.current && nextMetrics.isCompact) {
-        setIslandX(clampIslandX(Math.round(window.innerWidth / 2)));
+        setIslandPosition((current) => clampIslandPosition({
+          ...current,
+          x: Math.round(window.innerWidth / 2),
+        }));
       }
       wasCompactRef.current = nextMetrics.isCompact;
     };
@@ -383,7 +416,7 @@ function App() {
       window.removeEventListener('resize', update);
       window.removeEventListener('orientationchange', update);
     };
-  }, [clampIslandX]);
+  }, [clampIslandPosition]);
 
   useEffect(() => {
     const updateConnectivity = () => setConnectivityInfo(getConnectivityInfo());
@@ -451,7 +484,7 @@ function App() {
     };
   }, [hasConversation]);
 
-  // â”€â”€ Mascot mood: idle â†’ sleeping after 10s â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Mascot mood: idle â†’ sleeping after 10s
   const resetIdleTimer = useCallback(() => {
     if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
     clearAmbientMoodStartTimer();
@@ -537,7 +570,7 @@ function App() {
     }
   }, [isTyping, justReceivedResponse]);
 
-  // â”€â”€ Send message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Send message
   async function persistMessage(message) {
     const chatId = activeChatIdRef.current;
     if (!chatId) return;
@@ -600,7 +633,7 @@ function App() {
 
     (async () => {
       try {
-        const response = await generateBotResponse(trimmed, recentConversation, preferredModel, thinkingMode);
+        const response = await generateBotResponse(trimmed, recentConversation, preferredModel, thinkingMode, effectiveContextWindowSize);
 
         const botMsg = {
           id:            createMessageId(),
@@ -669,7 +702,7 @@ function App() {
   }
 
   function handleClearChat() {
-    setMessages([createWelcomeMessage()]);
+    setMessages([]);
     nextId.current = 1;
     setIslandOpen(false);
     setIsGreetingWaveActive(false);
@@ -689,10 +722,10 @@ function App() {
 
   async function handleSelectChat(chatId) {
     if (!chatId) return;
-    const selectedMessages = await storage.getMessages(chatId);
+    const selectedMessages = removeWelcomeMessages(await storage.getMessages(chatId));
     activeChatIdRef.current = chatId;
     setActiveChatId(chatId);
-    setMessages(selectedMessages?.length ? selectedMessages : [createWelcomeMessage()]);
+    setMessages(selectedMessages);
     const highestId = (selectedMessages || []).reduce((max, item) => {
       const numeric = Number(item.id);
       return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
@@ -729,15 +762,15 @@ function App() {
       if (!nextActiveChat) {
         activeChatIdRef.current = null;
         setActiveChatId(null);
-        setMessages([createWelcomeMessage()]);
+        setMessages([]);
         nextId.current = 1;
         return;
       }
 
       activeChatIdRef.current = nextActiveChat.id;
       setActiveChatId(nextActiveChat.id);
-      const selectedMessages = await storage.getMessages(nextActiveChat.id);
-      setMessages(selectedMessages?.length ? selectedMessages : [createWelcomeMessage()]);
+      const selectedMessages = removeWelcomeMessages(await storage.getMessages(nextActiveChat.id));
+      setMessages(selectedMessages);
       const highestId = (selectedMessages || []).reduce((max, item) => {
         const numeric = Number(item.id);
         return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
@@ -753,7 +786,9 @@ function App() {
     islandDragStateRef.current = {
       pointerId: e.pointerId,
       startX: e.clientX,
-      originX: islandX,
+      startY: e.clientY,
+      originX: islandPosition.x,
+      originY: islandPosition.y,
       moved: false,
       threshold: e.pointerType === 'touch' ? 12 : 4,
     };
@@ -763,9 +798,13 @@ function App() {
   function handleIslandPointerMove(e) {
     const dragState = islandDragStateRef.current;
     if (!dragState || dragState.pointerId !== e.pointerId || islandOpen) return;
-    const delta = e.clientX - dragState.startX;
-    if (Math.abs(delta) > dragState.threshold) dragState.moved = true;
-    setIslandX(clampIslandX(dragState.originX + delta));
+    const deltaX = e.clientX - dragState.startX;
+    const deltaY = e.clientY - dragState.startY;
+    if (Math.hypot(deltaX, deltaY) > dragState.threshold) dragState.moved = true;
+    setIslandPosition(clampIslandPosition({
+      x: dragState.originX + deltaX,
+      y: dragState.originY + deltaY,
+    }));
   }
 
   function handleIslandPointerUp(e) {
@@ -877,9 +916,19 @@ function App() {
   const composerMobileOffset = isMobileComposerPinned ? viewportMetrics.keyboardOffset : 0;
   const isEmptyState = !hasConversation;
   const visibleMessages = messages;
-  const { usedSlots: displayedContextSlots } = getContextUsage(messages);
+  const hasActiveAccount = Boolean(backendAvailable && authUser?.id && !authUser?.isGuest);
+  const effectiveContextWindowSize = CONTEXT_WINDOW_SIZE + (hasActiveAccount ? ACCOUNT_MEMORY_BONUS : 0);
+  const { usedSlots: displayedContextSlots } = getContextUsage(messages, effectiveContextWindowSize);
   const liveStatusItems = [envInfo, connectivityInfo];
   const hasLocalChats = recentChats.some((chat) => chat.source === 'local');
+  const profileInitials = getProfileInitials(authUser?.name || authUser?.email);
+  const profileStats = profileData || {
+    totalChats: recentChats.length,
+    totalMessages: messages.length,
+    memoryBase: CONTEXT_WINDOW_SIZE,
+    memoryBonus: hasActiveAccount ? ACCOUNT_MEMORY_BONUS : 0,
+    memoryLimit: effectiveContextWindowSize,
+  };
 
   const activeModelOption = modelOptions.find((option) => option.key === preferredModel) || modelOptions[0];
   const activeThinkingOption = thinkingOptions.find((option) => option.id === thinkingMode) || thinkingOptions[0];
@@ -894,13 +943,13 @@ function App() {
     ? 'Vista previa pausada'
     : displayedContextSlots === 0
       ? 'Lista para seguir tu hilo'
-      : displayedContextSlots < CONTEXT_WINDOW_SIZE * 0.55
+      : displayedContextSlots < effectiveContextWindowSize * 0.55
         ? 'Memoria aprendiendo el contexto actual'
         : 'Memoria lista para conversaciónes largas';
   const programCopy = envInfo.mode === 'online'
     ? {
       heroCompact: 'Version en linea: autenticacion activa y chats persistentes por usuario.',
-      heroDesktop: 'Version en linea (SaaS): autenticacion, persistencia SQL y continuidad real de historiales entre sesiones.',
+      heroDesktop: 'Version en linea: autenticacion, persistencia y continuidad real de historiales entre sesiones.',
       hintCompact: 'Modo SaaS activo. Enter para enviar.',
       hintDesktop: 'Modo en linea: historial por usuario, reapertura de chats y sincronizacion con backend.',
       statusIdle: 'Trabaja con contexto persistente y sesiones autenticadas.',
@@ -964,6 +1013,8 @@ function App() {
     await logoutUser();
     setAuthInitialTab('login');
     setAuthUser(null);
+    setProfileOpen(false);
+    setProfileData(null);
     setChatBootstrapReady(false);
     setRecentChats([]);
     setActiveChatId(null);
@@ -975,11 +1026,56 @@ function App() {
     clearStoredAuthUser();
     setAuthInitialTab(tab === 'register' ? 'register' : 'login');
     setAuthUser(null);
+    setProfileOpen(false);
+    setProfileData(null);
     setChatBootstrapReady(false);
     setRecentChats([]);
     setActiveChatId(null);
     activeChatIdRef.current = null;
     loadedUserRef.current = null;
+  }
+
+  async function handleOpenProfile() {
+    if (!hasActiveAccount) return;
+    setProfileOpen(true);
+    setSidebarOpen(false);
+    setIslandOpen(false);
+    setProfileError('');
+    setPasswordStatus('');
+
+    try {
+      setProfileLoading(true);
+      const profile = await getUserProfile(authUser.id);
+      setProfileData(profile);
+    } catch (error) {
+      setProfileError(error.message || 'No se pudo cargar tu perfil.');
+    } finally {
+      setProfileLoading(false);
+    }
+  }
+
+  async function handleChangePassword(event) {
+    event.preventDefault();
+    if (!hasActiveAccount) return;
+    setPasswordStatus('');
+    setProfileError('');
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setProfileError('La contraseña nueva no coincide con la confirmación.');
+      return;
+    }
+
+    try {
+      await changeUserPassword({
+        userId: authUser.id,
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setPasswordStatus('Contraseña actualizada.');
+    } catch (error) {
+      setProfileError(error.message || 'No se pudo cambiar la contraseña.');
+    }
   }
 
   if (!appReady) {
@@ -1024,11 +1120,11 @@ function App() {
         '--composer-mobile-offset': `${composerMobileOffset}px`,
       }}
     >
-      {/* â”€â”€ Timer alert â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Timer alert */}
       {timerAlert && (
         <div className="timer-modal-overlay" onClick={() => setTimerAlert(null)}>
           <div className="timer-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="timer-modal-header">
+            <header className="timer-modal-header">
               <div className={`timer-status-icon ${timerAlert.finished ? 'status-finished' : 'status-running'}`}>
                 <IntentIcon name="automatizar" size={24} />
               </div>
@@ -1036,71 +1132,138 @@ function App() {
                 <p className="modal-eyebrow">Automatización</p>
                 <h3>{timerAlert.finished ? 'Temporizador completado' : 'Temporizador activo'}</h3>
               </div>
-            </div>
+            </header>
             <div className="timer-display">
               {!timerAlert.finished && <div className="timer-countdown"><span className="timer-number">{timerAlert.remaining || timerAlert.total}</span><span className="timer-unit">seg</span></div>}
               {timerAlert.finished && <div className="timer-complete-text">COMPLETADO</div>}
             </div>
             <div className="timer-label">{timerAlert.label}</div>
-            <div className="timer-modal-footer">
+            <footer className="timer-modal-footer">
               <button className="timer-close-btn" onClick={() => setTimerAlert(null)}>Cerrar</button>
-            </div>
+            </footer>
           </div>
         </div>
       )}
 
-      {/* â”€â”€ Search modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Search modal */}
       {searchModalOpen && (
         <div className="search-modal-overlay" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>
           <div className="search-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="search-modal-header">
+            <header className="search-modal-header">
               <div>
                 <p className="modal-eyebrow">Búsqueda rápida</p>
                 <h3>{searchModalType === 'youtube' ? 'Abrir en YouTube' : 'Abrir en Google'}</h3>
               </div>
               <button className="search-modal-close" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>X</button>
-            </div>
+            </header>
             <div className="search-modal-body">
               <input type="text" className="search-modal-input" placeholder={searchModalType === 'youtube' ? 'Busca un tutorial o video' : 'Busca una referencia, bug o librería'} value={searchModalInput} onChange={(e) => setSearchModalInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && searchModalInput.trim()) { const url = searchModalType === 'youtube' ? `https://www.youtube.com/results?search_query=${encodeURIComponent(searchModalInput)}` : `https://www.google.com/search?q=${encodeURIComponent(searchModalInput)}`; setNavigationUrl(url); setSearchModalOpen(false); setSearchModalInput(''); } }} autoFocus />
             </div>
-            <div className="search-modal-footer">
+            <footer className="search-modal-footer">
               <button className="search-modal-cancel" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>Cancelar</button>
               <button className="search-modal-submit" onClick={() => { if (searchModalInput.trim()) { const url = searchModalType === 'youtube' ? `https://www.youtube.com/results?search_query=${encodeURIComponent(searchModalInput)}` : `https://www.google.com/search?q=${encodeURIComponent(searchModalInput)}`; setNavigationUrl(url); setSearchModalOpen(false); setSearchModalInput(''); } }} disabled={!searchModalInput.trim()}>
                 {searchModalType === 'youtube' ? 'Abrir YouTube' : 'Buscar'}
               </button>
-            </div>
+            </footer>
           </div>
         </div>
       )}
 
-      {/* â”€â”€ Timer modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Timer modal */}
       {timerModalOpen && (
         <div className="timer-modal-overlay" onClick={() => { setTimerModalOpen(false); setTimerModalValue(''); }}>
           <div className="timer-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="timer-modal-header">
+            <header className="timer-modal-header">
               <div>
                 <p className="modal-eyebrow">Herramientas</p>
                 <h3>Configurar temporizador</h3>
               </div>
               <button className="timer-modal-close" onClick={() => { setTimerModalOpen(false); setTimerModalValue(''); }}>X</button>
-            </div>
+            </header>
             <div className="timer-modal-body">
               <input type="text" className="timer-modal-input" placeholder="Ej: 30s, 2 minutos, 1 hora" value={timerModalValue} onChange={(e) => setTimerModalValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && timerModalValue.trim()) { startTimer(timerModalValue); setTimerModalOpen(false); setTimerModalValue(''); } }} autoFocus />
               <div className="timer-modal-examples"><p>Ejemplos: <code>5</code>, <code>30s</code>, <code>2 minutos</code>, <code>1 hora</code></p></div>
             </div>
-            <div className="timer-modal-footer">
+            <footer className="timer-modal-footer">
               <button className="timer-modal-cancel" onClick={() => { setTimerModalOpen(false); setTimerModalValue(''); }}>Cancelar</button>
               <button className="timer-modal-submit" onClick={() => { if (timerModalValue.trim()) { startTimer(timerModalValue); setTimerModalOpen(false); setTimerModalValue(''); } }} disabled={!timerModalValue.trim()}>Iniciar</button>
-            </div>
+            </footer>
           </div>
         </div>
       )}
 
-      {/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {profileOpen && hasActiveAccount && (
+        <div className="profile-modal-overlay" onClick={() => setProfileOpen(false)}>
+          <section className="profile-modal-content" onClick={(e) => e.stopPropagation()} aria-label="Mi perfil">
+            <header className="profile-modal-header">
+              <div className="profile-title-row">
+                <span className="profile-avatar">{profileInitials}</span>
+                <div>
+                  <p className="modal-eyebrow">Mi perfil</p>
+                  <h3>{authUser.name || 'Cuenta FlowBot'}</h3>
+                </div>
+              </div>
+              <button className="profile-modal-close" onClick={() => setProfileOpen(false)} aria-label="Cerrar perfil">X</button>
+            </header>
+
+            <div className="profile-summary-grid">
+              <article className="profile-stat">
+                <span>Chats</span>
+                <strong>{profileLoading ? '...' : profileStats.totalChats || 0}</strong>
+              </article>
+              <article className="profile-stat">
+                <span>Mensajes</span>
+                <strong>{profileLoading ? '...' : profileStats.totalMessages || 0}</strong>
+              </article>
+              <article className="profile-stat profile-stat-accent">
+                <span>Memoria</span>
+                <strong>{profileStats.memoryLimit || effectiveContextWindowSize}</strong>
+                <small>+{profileStats.memoryBonus || ACCOUNT_MEMORY_BONUS} bonus</small>
+              </article>
+            </div>
+
+            <div className="profile-info-list">
+              <div>
+                <span>Correo</span>
+                <strong>{authUser.email}</strong>
+              </div>
+              <div>
+                <span>Nombre</span>
+                <strong>{authUser.name || 'Sin nombre'}</strong>
+              </div>
+              <div>
+                <span>Cuenta creada</span>
+                <strong>{profileStats.createdAt ? new Date(profileStats.createdAt).toLocaleDateString('es-ES') : 'Disponible con backend'}</strong>
+              </div>
+            </div>
+
+            <form className="profile-password-form" onSubmit={handleChangePassword}>
+              <p className="modal-eyebrow">Cambiar password</p>
+              <label>
+                Password actual
+                <input type="password" value={passwordForm.currentPassword} onChange={(e) => setPasswordForm((form) => ({ ...form, currentPassword: e.target.value }))} required />
+              </label>
+              <label>
+                Nuevo password
+                <input type="password" minLength={6} value={passwordForm.newPassword} onChange={(e) => setPasswordForm((form) => ({ ...form, newPassword: e.target.value }))} required />
+              </label>
+              <label>
+                Confirmar password
+                <input type="password" minLength={6} value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm((form) => ({ ...form, confirmPassword: e.target.value }))} required />
+              </label>
+              {profileError && <p className="profile-error">{profileError}</p>}
+              {passwordStatus && <p className="profile-success">{passwordStatus}</p>}
+              <button type="submit" className="profile-submit-btn">Actualizar password</button>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-header">
+        <header className="sidebar-header">
           <div className="sidebar-brand">
             <FlowLogo size={34} />
             <div className="sidebar-brand-copy">
@@ -1111,7 +1274,7 @@ function App() {
           <button className="sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Cerrar menu">
             <IntentIcon name="close" size={18} />
           </button>
-        </div>
+        </header>
 
         <details className="sidebar-section" name="sidebar-menu" open>
           <summary className="sidebar-section-summary">
@@ -1146,11 +1309,11 @@ function App() {
             <div className="intent-groups-list">
               {intentGroups.filter((g) => ['visualizar','automatizar','acciones_sistema'].includes(g.id)).map((group) => (
                 <div key={group.id} className="sidebar-group" style={{ '--group-color': group.color }}>
-                  <div className="group-header">
+                  <header className="group-header">
                     <span className="group-icon"><IntentIcon name={group.iconName} size={18} /></span>
                     <span className="group-name">{group.name}</span>
                     <span className="group-count">{group.keywords.length}</span>
-                  </div>
+                  </header>
                   <div className="group-keywords-preview">
                     <p className="group-description">{group.details.replace(/\*\*/g, '')}</p>
                     {group.keywords.slice(0, 3).map((kw) => <span key={`${group.id}-${kw}`} className="mini-tag">{kw}</span>)}
@@ -1237,12 +1400,24 @@ function App() {
           <div className="sidebar-section-body">
             {backendAvailable ? (
               <div className="sidebar-auth-actions">
-                <button type="button" className="sidebar-auth-btn" onClick={() => handleShowAuth('login')}>
-                  Login
-                </button>
-                <button type="button" className="sidebar-auth-btn" onClick={() => handleShowAuth('register')}>
-                  Registro
-                </button>
+                {hasActiveAccount ? (
+                  <button type="button" className="sidebar-auth-btn sidebar-account-card" onClick={handleOpenProfile}>
+                    <span className="profile-avatar profile-avatar-small">{profileInitials}</span>
+                    <span className="sidebar-account-copy">
+                      <span>Ver cuenta</span>
+                      <small>{authUser.email}</small>
+                    </span>
+                  </button>
+                ) : (
+                  <>
+                    <button type="button" className="sidebar-auth-btn" onClick={() => handleShowAuth('login')}>
+                      Login
+                    </button>
+                    <button type="button" className="sidebar-auth-btn" onClick={() => handleShowAuth('register')}>
+                      Registro
+                    </button>
+                  </>
+                )}
                 <button type="button" className="sidebar-auth-btn sidebar-auth-btn-danger" onClick={() => { void handleLogout(); }}>
                   Logout
                 </button>
@@ -1253,12 +1428,12 @@ function App() {
           </div>
         </details>
 
-        <div className="sidebar-footer">
+        <footer className="sidebar-footer">
           <button className="clear-chat-btn" onClick={handleClearChat}>
             <span className="btn-icon"><IntentIcon name="clear" size={16} /></span>
             <span>Nueva conversación</span>
           </button>
-        </div>
+        </footer>
       </aside>
 
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
@@ -1266,7 +1441,9 @@ function App() {
       <div className="dynamic-island-layer" aria-hidden={false}>
         <div
           className={`dynamic-island ${islandOpen ? 'dynamic-island-open' : 'dynamic-island-closed'} ${isTyping ? 'dynamic-island-busy' : ''} ${isCompactViewport ? 'dynamic-island-mobile' : 'dynamic-island-desktop'}`}
-          style={{ left: `${islandX}px` }}
+          style={islandOpen
+            ? { left: '50%', top: '18px' }
+            : { left: `${islandPosition.x}px`, top: `${islandPosition.y}px` }}
         >
           {!islandOpen ? (
             <button
@@ -1303,7 +1480,7 @@ function App() {
                     <span className={`dynamic-island-env-pill ${connectivityInfo.className}`}>{connectivityInfo.label}</span>
                     <span className="dynamic-island-memory">
                       <span className="dynamic-island-memory-label">Memoria</span>
-                      <span className="dynamic-island-memory-value">{displayedContextSlots}/{CONTEXT_WINDOW_SIZE}</span>
+                      <span className="dynamic-island-memory-value">{displayedContextSlots}/{effectiveContextWindowSize}</span>
                     </span>
                   </div>
                 </div>
@@ -1311,7 +1488,7 @@ function App() {
 
               {/* Memory mini progress bar */}
               <div className="dynamic-island-progress">
-                <div className="dynamic-island-progress-fill" style={{ width: `${Math.min(100, (displayedContextSlots / CONTEXT_WINDOW_SIZE) * 100)}%` }} />
+                <div className="dynamic-island-progress-fill" style={{ width: `${Math.min(100, (displayedContextSlots / effectiveContextWindowSize) * 100)}%` }} />
               </div>
 
               <div className="dynamic-island-actions">
@@ -1336,12 +1513,21 @@ function App() {
                 </button>
                 {backendAvailable && (
                   <>
-                    <button type="button" className="dynamic-island-action" onClick={() => handleShowAuth('login')}>
-                      <span>Login</span>
-                    </button>
-                    <button type="button" className="dynamic-island-action" onClick={() => handleShowAuth('register')}>
-                      <span>Registro</span>
-                    </button>
+                    {hasActiveAccount ? (
+                      <button type="button" className="dynamic-island-action" onClick={handleOpenProfile}>
+                        <span className="profile-avatar profile-avatar-tiny">{profileInitials}</span>
+                        <span>Ver cuenta</span>
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button" className="dynamic-island-action" onClick={() => handleShowAuth('login')}>
+                          <span>Login</span>
+                        </button>
+                        <button type="button" className="dynamic-island-action" onClick={() => handleShowAuth('register')}>
+                          <span>Registro</span>
+                        </button>
+                      </>
+                    )}
                     <button type="button" className="dynamic-island-action dynamic-island-action-danger" onClick={handleLogout}>
                       <span>Logout</span>
                     </button>
@@ -1353,9 +1539,9 @@ function App() {
         </div>
       </div>
 
-      {/* â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Main */}
       <main className="chat-main">
-        {/* â”€â”€ Messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Messages */}
         <div className={`messages-container ${isEmptyState ? 'messages-container-empty' : ''}`} ref={messagesContainerRef}>
           <div className={`messages-inner ${isEmptyState ? 'messages-inner-empty' : ''}`}>
             {isEmptyState && (
@@ -1373,7 +1559,7 @@ function App() {
                   ))}
                 </div>
 
-                <div className="empty-state-head">
+                <header className="empty-state-head">
                   <div className="empty-state-copy">
                     <p className="empty-state-eyebrow">FlowBot para developers</p>
                     <h2 className="empty-state-title">Construye más rapido. Depura con contexto. Aprende mientras envías.</h2>
@@ -1383,7 +1569,7 @@ function App() {
                       </p>
                     </div>
                   </div>
-                </div>
+                </header>
 
                 <div className="hero-feature-grid">
                   <article className={`hero-feature-card ${!memoryPreviewEnabled ? 'hero-feature-card-off' : ''}`}>
@@ -1398,7 +1584,7 @@ function App() {
                         <span></span>
                       </button>
                     </div>
-                    <strong>{displayedContextSlots}/{CONTEXT_WINDOW_SIZE}</strong>
+                    <strong>{displayedContextSlots}/{effectiveContextWindowSize}</strong>
                     <p>{memorySummary}</p>
                   </article>
 
@@ -1453,7 +1639,7 @@ function App() {
           </div>
         </div>
 
-        {/* â”€â”€ Composer dock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Composer dock */}
         <div
           ref={composerDockRef}
           className={`composer-dock ${hasConversation ? 'composer-dock-compact' : ''} ${isMobileComposerPinned ? 'composer-dock-mobile-pinned' : ''}`}
@@ -1490,7 +1676,7 @@ function App() {
                 </div>
                 <div className="composer-top-meta">
                   <span className="composer-inline-pill">{activeModelOption.label}</span>
-                  {!isCompactViewport && <span className={`composer-inline-pill ${memoryPreviewEnabled ? '' : 'is-muted'}`}>Memoria {displayedContextSlots}/{CONTEXT_WINDOW_SIZE}</span>}
+                  {!isCompactViewport && <span className={`composer-inline-pill ${memoryPreviewEnabled ? '' : 'is-muted'}`}>Memoria {displayedContextSlots}/{effectiveContextWindowSize}</span>}
                   <span className={`composer-inline-pill ${envInfo.className}`}>{envInfo.label}</span>
                   <span className={`composer-inline-pill ${connectivityInfo.className}`}>{connectivityInfo.label}</span>
                 </div>
@@ -1596,11 +1782,11 @@ function App() {
                 </div>
               </div>
 
-              <div className={`composer-footer ${hasConversation ? 'composer-footer-compact' : ''}`}>
+              <footer className={`composer-footer ${hasConversation ? 'composer-footer-compact' : ''}`}>
                 <p className="input-hint">
                   {composerHint}
                 </p>
-              </div>
+              </footer>
             </div>
           </div>
         </div>
@@ -1616,5 +1802,3 @@ function App() {
 }
 
 export default App;
-
-

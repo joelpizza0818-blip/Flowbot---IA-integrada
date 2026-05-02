@@ -1,8 +1,5 @@
-﻿import React, { memo, useState, useEffect, useRef } from 'react';
-import FlowLogo from './FlowLogo';
+import React, { memo, useState, useEffect, useRef } from 'react';
 import IntentIcon from './IntentIcon';
-
-const MODE_LABELS = { deep: 'Profundo', short: 'Rápido', normal: null };
 
 const ACTION_CONFIG = {
   open_youtube: {
@@ -231,12 +228,15 @@ function parseCodeFence(rawContent) {
   };
 }
 
-function CodeBlock({ rawContent }) {
+function CodeBlock({ rawContent, enableHtmlPreview = true }) {
   const { language: hintedLanguage, code } = parseCodeFence(rawContent);
   const language = detectLanguage(code, hintedLanguage);
   const lineCount = code.split('\n').length;
   const [expanded, setExpanded] = useState(lineCount <= 14);
   const [copied, setCopied] = useState(false);
+  const [htmlView, setHtmlView] = useState('preview');
+  const [fullscreen, setFullscreen] = useState(false);
+  const isHtmlPreview = enableHtmlPreview && hintedLanguage.trim().toLowerCase() === 'html';
 
   function handleCopy() {
     navigator.clipboard.writeText(code.trim());
@@ -252,6 +252,29 @@ function CodeBlock({ rawContent }) {
           <span className="code-block-lines">{lineCount} lineas</span>
         </div>
         <div className="code-block-actions">
+          {isHtmlPreview && expanded && (
+            <div className="code-view-toggle" aria-label="Alternar vista HTML">
+              <button
+                type="button"
+                className={`code-toolbar-btn ${htmlView === 'preview' ? 'code-toolbar-btn-active' : ''}`}
+                onClick={() => setHtmlView('preview')}
+              >
+                Preview
+              </button>
+              <button
+                type="button"
+                className={`code-toolbar-btn ${htmlView === 'code' ? 'code-toolbar-btn-active' : ''}`}
+                onClick={() => setHtmlView('code')}
+              >
+                Código
+              </button>
+            </div>
+          )}
+          {isHtmlPreview && expanded && (
+            <button type="button" className="code-toolbar-btn" onClick={() => setFullscreen((value) => !value)}>
+              {fullscreen ? 'Cerrar' : 'Pantalla'}
+            </button>
+          )}
           <button type="button" className="code-toolbar-btn" onClick={() => setExpanded((value) => !value)}>
             {expanded ? 'Ocultar' : 'Expandir'}
           </button>
@@ -262,39 +285,194 @@ function CodeBlock({ rawContent }) {
       </div>
 
       {expanded && (
-        <pre className="code-block">
-          <code className={`code-content language-${language}`}>
-            {renderHighlightedCode(code.trim(), language)}
-          </code>
-        </pre>
+        isHtmlPreview && htmlView === 'preview' ? (
+          <div className={`html-preview-shell ${fullscreen ? 'html-preview-shell-fullscreen' : ''}`}>
+            {fullscreen && (
+              <div className="html-preview-fullscreen-toolbar">
+                <span>Preview HTML</span>
+                <button type="button" className="code-toolbar-btn" onClick={() => setFullscreen(false)}>
+                  Cerrar
+                </button>
+              </div>
+            )}
+            <iframe
+              className="html-preview-frame"
+              title="Vista previa HTML"
+              sandbox="allow-scripts"
+              srcDoc={code.trim()}
+            />
+          </div>
+        ) : (
+          <pre className="code-block">
+            <code className={`code-content language-${language}`}>
+              {renderHighlightedCode(code.trim(), language)}
+            </code>
+          </pre>
+        )
       )}
     </div>
   );
 }
 
-function parseRichText(text) {
-  const blockParts = text.split(/(```[\s\S]*?```)/g).map((part, idx) => {
-    if (idx % 2 === 1) return { type: 'code-block', content: part.replace(/^```|```$/g, '') };
-    return { type: 'text', content: part };
+function normalizeMarkdownText(text) {
+  return String(text || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:p|div|section|article|h[1-6]|li)>/gi, '\n\n')
+    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<\/?(?:p|div|section|article|span|strong|b|em|i|ul|ol)[^>]*>/gi, '')
+    .replace(/<\/?[a-z][^>]*>/gi, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .trim();
+}
+
+function renderInlineMarkdown(text, keyPrefix) {
+  const parts = String(text || '').split(/(\[[^\]\n]+\]\((?:https?:\/\/|mailto:)[^)]+\)|`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*|_[^_\n]+_)/g);
+
+  return parts.filter(Boolean).map((part, index) => {
+    const key = `${keyPrefix}-${index}`;
+    const linkMatch = part.match(/^\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^)]+)\)$/);
+    if (linkMatch) {
+      return (
+        <a key={key} className="message-link" href={linkMatch[2]} target="_blank" rel="noreferrer">
+          {linkMatch[1]}
+        </a>
+      );
+    }
+    if (part.startsWith('`') && part.endsWith('`')) return <code key={key} className="inline-code">{part.slice(1, -1)}</code>;
+    if ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('__') && part.endsWith('__'))) {
+      return <strong key={key}>{part.slice(2, -2)}</strong>;
+    }
+    if ((part.startsWith('*') && part.endsWith('*')) || (part.startsWith('_') && part.endsWith('_'))) {
+      return <em key={key}>{part.slice(1, -1)}</em>;
+    }
+    return <React.Fragment key={key}>{part}</React.Fragment>;
+  });
+}
+
+function renderParagraph(lines, key) {
+  return (
+    <p key={key}>
+      {lines.map((line, index) => (
+        <React.Fragment key={`${key}-line-${index}`}>
+          {index > 0 && <br />}
+          {renderInlineMarkdown(line.trim(), `${key}-inline-${index}`)}
+        </React.Fragment>
+      ))}
+    </p>
+  );
+}
+
+function renderList(items, ordered, key) {
+  const Tag = ordered ? 'ol' : 'ul';
+  return (
+    <Tag key={key}>
+      {items.map((item, index) => (
+        <li key={`${key}-item-${index}`}>{renderInlineMarkdown(item, `${key}-inline-${index}`)}</li>
+      ))}
+    </Tag>
+  );
+}
+
+function renderMarkdownBlock(content, keyPrefix) {
+  const normalized = normalizeMarkdownText(content);
+  if (!normalized) return null;
+
+  const elements = [];
+  const lines = normalized.split('\n');
+  let paragraphLines = [];
+  let listItems = [];
+  let listOrdered = false;
+
+  const flushParagraph = () => {
+    if (!paragraphLines.length) return;
+    elements.push(renderParagraph(paragraphLines, `${keyPrefix}-p-${elements.length}`));
+    paragraphLines = [];
+  };
+
+  const flushList = () => {
+    if (!listItems.length) return;
+    elements.push(renderList(listItems, listOrdered, `${keyPrefix}-list-${elements.length}`));
+    listItems = [];
+  };
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      return;
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (headingMatch) {
+      flushParagraph();
+      flushList();
+      const level = headingMatch[1].length + 2;
+      const Tag = `h${level}`;
+      elements.push(<Tag key={`${keyPrefix}-heading-${elements.length}`}>{renderInlineMarkdown(headingMatch[2], `${keyPrefix}-heading-inline-${elements.length}`)}</Tag>);
+      return;
+    }
+
+    if (/^---+$/.test(trimmed)) {
+      flushParagraph();
+      flushList();
+      elements.push(<hr key={`${keyPrefix}-hr-${elements.length}`} />);
+      return;
+    }
+
+    const quoteMatch = trimmed.match(/^>\s?(.+)$/);
+    if (quoteMatch) {
+      flushParagraph();
+      flushList();
+      elements.push(<blockquote key={`${keyPrefix}-quote-${elements.length}`}>{renderInlineMarkdown(quoteMatch[1], `${keyPrefix}-quote-inline-${elements.length}`)}</blockquote>);
+      return;
+    }
+
+    const unorderedMatch = trimmed.match(/^[-*]\s+(.+)$/);
+    const orderedMatch = trimmed.match(/^\d+[.)]\s+(.+)$/);
+    if (unorderedMatch || orderedMatch) {
+      flushParagraph();
+      const nextOrdered = Boolean(orderedMatch);
+      if (listItems.length && listOrdered !== nextOrdered) flushList();
+      listOrdered = nextOrdered;
+      listItems.push((orderedMatch || unorderedMatch)[1]);
+      return;
+    }
+
+    flushList();
+    paragraphLines.push(trimmed);
   });
 
-  return blockParts.map((block, blockIdx) => {
-    if (block.type === 'code-block') return <CodeBlock key={blockIdx} rawContent={block.content} />;
+  flushParagraph();
+  flushList();
 
-    const inlineParts = block.content.split(/(`[^`]+`)/g).map((part, inlineIdx) => {
-      if (inlineIdx % 2 === 1) {
-        return <code key={`inline-${inlineIdx}`} className="inline-code">{part.slice(1, -1)}</code>;
-      }
+  return elements;
+}
 
-      return part.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).map((fragment, fragmentIdx) => {
-        if (fragment.startsWith('**') && fragment.endsWith('**')) return <strong key={`bold-${fragmentIdx}`}>{fragment.slice(2, -2)}</strong>;
-        if (fragment.startsWith('*') && fragment.endsWith('*')) return <em key={`italic-${fragmentIdx}`}>{fragment.slice(1, -1)}</em>;
-        return <React.Fragment key={`text-${fragmentIdx}`}>{fragment}</React.Fragment>;
-      });
-    });
+function parseRichText(text, options = {}) {
+  const enableHtmlPreview = options.enableHtmlPreview !== false;
+  const blocks = [];
+  const fenceRegex = /```([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let match;
 
-    return <React.Fragment key={`block-${blockIdx}`}>{inlineParts}</React.Fragment>;
-  });
+  while ((match = fenceRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      blocks.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+    }
+    blocks.push({ type: 'code-block', content: match[1] });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) blocks.push({ type: 'text', content: text.slice(lastIndex) });
+
+  return blocks.map((block, index) => (
+    block.type === 'code-block'
+      ? <CodeBlock key={`code-${index}`} rawContent={block.content} enableHtmlPreview={enableHtmlPreview} />
+      : <React.Fragment key={`text-${index}`}>{renderMarkdownBlock(block.content, `block-${index}`)}</React.Fragment>
+  ));
 }
 
 function ActionCard({ action }) {
@@ -369,12 +547,6 @@ function ChatMessage({ message, isLatest, onStatusChange }) {
 
   return (
     <div className={`chat-message ${isUser ? 'user-message' : 'bot-message'} ${isLatest ? 'message-enter' : ''}`}>
-      {!isUser && (
-        <div className="bot-avatar">
-          <FlowLogo size={24} mood={message.fallbackReason ? 'error' : 'default'} reading={!message.fallbackReason} />
-        </div>
-      )}
-
       <div 
         ref={bubbleRef}
         className={`message-bubble ${isUser ? 'user-bubble' : 'bot-bubble'} ${message.ephemeral && ephemeralStatus === 'hidden' ? 'ephemeral-hidden' : ''} ${message.ephemeral && ephemeralStatus === 'consumed' ? 'ephemeral-consumed' : ''}`}
@@ -415,31 +587,9 @@ function ChatMessage({ message, isLatest, onStatusChange }) {
                 </button>
               </div>
             )}
-            {!isUser && (
-              <div className="message-head">
-                <div className="message-author">
-                  <span className="message-role">FlowBot</span>
-                </div>
-                <div className="message-header-meta">
-                  {!isUser && message.model && (
-                    <span className="message-inline-chip">
-                      {message.model}
-                      {message.thinkingMode && message.thinkingMode !== 'normal' && MODE_LABELS[message.thinkingMode] && (
-                        <span className="message-chip-separator">{MODE_LABELS[message.thinkingMode]}</span>
-                      )}
-                    </span>
-                  )}
-                  <span className="message-time">{message.time}</span>
-                </div>
-              </div>
-            )}
-
             {message.text && (
               <div className="message-copy">
-                {!isUser && message.iconName && (
-                  <span className="message-type-icon"><IntentIcon name={message.iconName} size={16} /></span>
-                )}
-                <div className="message-text">{parseRichText(message.text)}</div>
+                <div className="message-text">{parseRichText(message.text, { enableHtmlPreview: !isUser })}</div>
               </div>
             )}
 

@@ -78,12 +78,37 @@ async function postAuth(path, body) {
   return user;
 }
 
+async function apiJson(path, options = {}) {
+  const response = await fetch(apiUrl(path), {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error || 'Error de autenticación.');
+  }
+  return payload;
+}
+
 export async function registerUser(credentials) {
   return postAuth('/api/auth/register', credentials);
 }
 
 export async function loginUser(credentials) {
   return postAuth('/api/auth/login', credentials);
+}
+
+export async function getUserProfile(userId) {
+  const payload = await apiJson(`/api/account/profile?userId=${encodeURIComponent(userId)}`);
+  return payload.profile;
+}
+
+export async function changeUserPassword({ userId, currentPassword, newPassword }) {
+  const payload = await apiJson('/api/account/password', {
+    method: 'POST',
+    body: JSON.stringify({ userId, currentPassword, newPassword }),
+  });
+  return payload;
 }
 
 export async function logoutUser() {

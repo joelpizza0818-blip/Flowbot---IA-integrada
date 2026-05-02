@@ -426,6 +426,8 @@ const decisionRules = [
   { intentId: 'automatizar', triggerKeywords: null, action: 'respond_only', priority: 1 },
 ];
 
+const ENABLE_TEXT_ACTION_MATCHES = false;
+
 const searchIntroFillers = new Set([
   'en', 'de', 'el', 'la', 'los', 'las', 'un', 'una', 'sobre', 'para', 'por', 'con', 'a', 'e', 'o', 'u',
   'buscar', 'busca', 'busco', 'encuentra', 'muestra', 'quiero', 'ver', 'necesito', 'dame', 'dime',
@@ -512,6 +514,8 @@ function extractQueryForIntent(userMessage, intentId) {
 }
 
 export function analyzeMessage(userMessage) {
+  if (!ENABLE_TEXT_ACTION_MATCHES) return [];
+
   return intentGroups
     .map((group) => {
       const matched = matchKeywords(userMessage, group.keywords);
@@ -522,6 +526,8 @@ export function analyzeMessage(userMessage) {
 }
 
 export function resolveActions(userMessage) {
+  if (!ENABLE_TEXT_ACTION_MATCHES) return [];
+
   const trimmed = userMessage.trim();
   if (!trimmed) return [];
 
@@ -575,12 +581,12 @@ export function resolveActions(userMessage) {
   return actions;
 }
 
-export async function generateBotResponse(userMessage, conversationHistory = [], preferredModel = 'auto', thinkingMode = 'normal') {
+export async function generateBotResponse(userMessage, conversationHistory = [], preferredModel = 'auto', thinkingMode = 'normal', contextWindowSize) {
   const trimmed = userMessage.trim();
   const intents = analyzeMessage(trimmed);
 
   if (intents.length === 0) {
-    const promptWithContext = buildRecentContextPrompt(trimmed, conversationHistory);
+    const promptWithContext = buildRecentContextPrompt(trimmed, conversationHistory, contextWindowSize);
     const result = await fetchGeminiAI(promptWithContext, preferredModel, thinkingMode);
     if (result?.text) {
       return {

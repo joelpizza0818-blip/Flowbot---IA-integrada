@@ -37,8 +37,8 @@ function AuthPage({ onLogin, onRegister, backendAvailable, errorMessage, initial
         <h1>FlowBot</h1>
         <p className="auth-subtitle">
           {backendAvailable
-            ? 'Inicia sesion o crea una cuenta para guardar tus chats en SQL Server 2019.'
-            : 'Backend no disponible: modo invitado activo con almacenamiento local.'}
+            ? 'Inicia sesion o crea una cuenta para guardar tus chats.'
+            : 'invitado activo con almacenamiento local.'}
         </p>
 
         {backendAvailable && (

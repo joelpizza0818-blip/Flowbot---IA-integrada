@@ -151,6 +151,79 @@ async function loginUser({ email, password }) {
   return user;
 }
 
+async function getUserProfile(userId) {
+  const pool = await getDbPool();
+  if (!pool) {
+    const user = [...memoryUsers.values()].find((item) => item.id === userId);
+    if (!user) return null;
+    const chats = [...memoryChats.values()].filter((chat) => chat.userId === userId);
+    const chatIds = new Set(chats.map((chat) => chat.id));
+    const totalMessages = [...memoryMessages.entries()]
+      .filter(([chatId]) => chatIds.has(chatId))
+      .reduce((sum, [, messages]) => sum + messages.length, 0);
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      createdAt: user.createdAt,
+      totalChats: chats.length,
+      totalMessages,
+    };
+  }
+
+  const result = await pool.request()
+    .input('UserId', sql.NVarChar(128), userId)
+    .query(`
+      SELECT TOP 1
+        U.Id,
+        U.Name,
+        U.Email,
+        U.CreatedAt,
+        COUNT(DISTINCT C.Id) AS TotalChats,
+        COUNT(M.Id) AS TotalMessages
+      FROM Users U
+      LEFT JOIN Chats C ON C.UserId = U.Id
+      LEFT JOIN Messages M ON M.ChatId = C.Id
+      WHERE U.Id = @UserId
+      GROUP BY U.Id, U.Name, U.Email, U.CreatedAt;
+    `);
+
+  const row = result.recordset?.[0];
+  if (!row) return null;
+  return {
+    id: row.Id,
+    name: row.Name,
+    email: row.Email,
+    createdAt: row.CreatedAt,
+    totalChats: Number(row.TotalChats || 0),
+    totalMessages: Number(row.TotalMessages || 0),
+  };
+}
+
+async function changeUserPassword({ userId, currentPassword, newPassword }) {
+  const pool = await getDbPool();
+  const nextHash = hashPassword(newPassword);
+
+  if (!pool) {
+    const user = [...memoryUsers.values()].find((item) => item.id === userId);
+    if (!user || !verifyPassword(currentPassword, user.passwordHash)) return false;
+    user.passwordHash = nextHash;
+    return true;
+  }
+
+  const result = await pool.request()
+    .input('UserId', sql.NVarChar(128), userId)
+    .query('SELECT TOP 1 Id, PasswordHash FROM Users WHERE Id = @UserId;');
+  const user = result.recordset?.[0];
+  if (!user || !verifyPassword(currentPassword, user.PasswordHash)) return false;
+
+  await pool.request()
+    .input('UserId', sql.NVarChar(128), userId)
+    .input('PasswordHash', sql.NVarChar(256), nextHash)
+    .query('UPDATE Users SET PasswordHash = @PasswordHash WHERE Id = @UserId;');
+  return true;
+}
+
 async function listChats(userId) {
   const pool = await getDbPool();
   if (!pool) {
@@ -507,6 +580,43 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/logout', (_req, res) => {
   return res.json({ ok: true });
+});
+
+app.get('/api/account/profile', async (req, res) => {
+  try {
+    const userId = typeof req.query?.userId === 'string' ? req.query.userId.trim() : '';
+    if (!userId) return res.status(400).json({ error: 'userId requerido.' });
+    const profile = await getUserProfile(userId);
+    if (!profile) return res.status(404).json({ error: 'Cuenta no encontrada.' });
+    return res.json({
+      ok: true,
+      profile: {
+        ...profile,
+        memoryBase: 6,
+        memoryBonus: 4,
+        memoryLimit: 10,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'No se pudo cargar el perfil.' });
+  }
+});
+
+app.post('/api/account/password', async (req, res) => {
+  try {
+    const userId = typeof req.body?.userId === 'string' ? req.body.userId.trim() : '';
+    const currentPassword = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
+    const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+    if (!userId) return res.status(400).json({ error: 'userId requerido.' });
+    if (!currentPassword) return res.status(400).json({ error: 'Contraseña actual requerida.' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'La contraseña nueva debe tener al menos 6 caracteres.' });
+
+    const changed = await changeUserPassword({ userId, currentPassword, newPassword });
+    if (!changed) return res.status(401).json({ error: 'Contraseña actual incorrecta.' });
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'No se pudo cambiar la contraseña.' });
+  }
 });
 
 app.get('/api/chats', async (req, res) => {
