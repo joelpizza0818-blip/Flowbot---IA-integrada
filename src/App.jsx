@@ -338,13 +338,13 @@ function App() {
 
   useEffect(() => {
     let mounted = true;
-    if (!appReady || !authUser?.id) return () => {};
-    if (loadedUserRef.current === authUser.id) return () => {};
-    loadedUserRef.current = authUser.id;
+    if (!appReady) return () => {};
+    const effectiveUserId = authUser?.id || 'guest';
+    if (loadedUserRef.current === effectiveUserId) return () => {};
+    loadedUserRef.current = effectiveUserId;
 
     (async () => {
-      const user = authUser;
-
+      const user = authUser || { id: 'guest', name: 'Invitado', isGuest: true };
       activeUserRef.current = user;
 
       let chats = await storage.getChats(user.id);
@@ -713,31 +713,42 @@ function App() {
     setIslandOpen(false);
     setIsGreetingWaveActive(false);
     hasPlayedGreetingRef.current = false;
-    if (activeUserRef.current?.id) {
-      // Reuse an existing empty "Nuevo chat" if one already exists
-      const existingEmpty = recentChats.find(
-        (chat) => chat.title === 'Nuevo chat' && chat.id !== activeChatIdRef.current
-      );
-      if (existingEmpty) {
-        activeChatIdRef.current = existingEmpty.id;
-        setActiveChatId(existingEmpty.id);
-        return;
+
+    const userId = activeUserRef.current?.id || 'guest';
+
+    // 1. Fetch latest chats and messages to strictly check for empty "Nuevo chat"
+    const allChats = await storage.getChats(userId);
+    
+    // Check current chat first
+    const currentChat = allChats.find(c => c.id === activeChatIdRef.current);
+    if (currentChat?.title === 'Nuevo chat') {
+      const currentMsgs = await storage.getMessages(currentChat.id);
+      if (!currentMsgs || currentMsgs.length === 0) {
+        return; // Already on an empty new chat
       }
-      // Also check if the current chat is already empty (no messages)
-      const currentMessages = await storage.getMessages(activeChatIdRef.current);
-      const currentTitle = recentChats.find((c) => c.id === activeChatIdRef.current)?.title;
-      if ((!currentMessages || currentMessages.length === 0) && currentTitle === 'Nuevo chat') {
-        return; // Already on an empty new chat, nothing to do
+    }
+
+    // Check for any other empty "Nuevo chat"
+    for (const chat of allChats) {
+      if (chat.title === 'Nuevo chat') {
+        const msgs = await storage.getMessages(chat.id);
+        if (!msgs || msgs.length === 0) {
+          activeChatIdRef.current = chat.id;
+          setActiveChatId(chat.id);
+          return;
+        }
       }
-      void storage.saveChat(activeUserRef.current.id, {
-        id: `chat-${crypto.randomUUID()}`,
-        title: 'Nuevo chat',
-      }).then((chat) => {
-        if (!chat) return;
-        activeChatIdRef.current = chat.id;
-        setActiveChatId(chat.id);
-        setRecentChats((prev) => sortChatsByDate([chat, ...prev]));
-      });
+    }
+
+    // 2. Create new one if none found
+    const chat = await storage.saveChat(userId, {
+      id: `chat-${crypto.randomUUID()}`,
+      title: 'Nuevo chat',
+    });
+    if (chat) {
+      activeChatIdRef.current = chat.id;
+      setActiveChatId(chat.id);
+      setRecentChats((prev) => sortChatsByDate([chat, ...prev]));
     }
   }
 
@@ -757,7 +768,7 @@ function App() {
 
   async function handleDeleteRecentChat(chatId) {
     if (!chatId) return;
-    const activeUserId = activeUserRef.current?.id;
+    const activeUserId = activeUserRef.current?.id || 'guest';
     if (!activeUserId) return;
 
     try {
