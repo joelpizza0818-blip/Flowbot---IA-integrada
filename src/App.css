@@ -1033,15 +1033,17 @@ textarea {
   max-width: calc(100vw - 24px);
   transform: translateX(-100%);
   transition: transform var(--transition-base);
-  padding: 24px 18px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: 24px 18px 90px;
+  display: block;
   border-right: 1px solid var(--line-soft);
   background: linear-gradient(180deg, rgba(8, 12, 17, 0.95), rgba(8, 12, 17, 0.84));
   backdrop-filter: blur(18px);
   overflow-y: auto;
   box-shadow: var(--shadow-elevated);
+}
+
+.sidebar > * + * {
+  margin-top: 16px;
 }
 
 .sidebar.sidebar-open {
@@ -1228,24 +1230,7 @@ textarea {
 
 .sidebar-section-body {
   padding: 0 12px 12px;
-  max-height: clamp(132px, 24vh, 260px);
-  overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(128, 160, 220, 0.5) transparent;
-}
-
-.sidebar-section-body::-webkit-scrollbar {
-  width: 8px;
-}
-
-.sidebar-section-body::-webkit-scrollbar-thumb {
-  background: rgba(128, 160, 220, 0.42);
-  border-radius: 999px;
-}
-
-.sidebar-section-body::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 .sidebar-mode-list,
@@ -1696,7 +1681,14 @@ textarea {
 }
 
 .sidebar-footer {
-  margin-top: auto;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: var(--sidebar-width);
+  max-width: calc(100vw - 24px);
+  padding: 16px 18px 18px;
+  background: linear-gradient(180deg, transparent, rgba(8, 12, 17, 0.97) 28%);
+  z-index: 1;
 }
 
 .sidebar-overlay {
@@ -3415,9 +3407,6 @@ textarea {
     padding-right: clamp(20px, 3vw, 40px);
   }
 
-  .sidebar-section-body {
-    max-height: clamp(150px, 26vh, 300px);
-  }
 }
 
 @media (min-width: 1024px) and (max-width: 1279px) {
@@ -3641,6 +3630,51 @@ textarea {
 .recent-chat-list {
   display: grid;
   gap: 8px;
+}
+
+.shortcut-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(13, 20, 36, 0.55);
+  border: 1px solid rgba(150, 170, 210, 0.14);
+}
+
+.shortcut-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.shortcut-kbd {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.shortcut-kbd kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 6px;
+  line-height: 1.4;
 }
 
 .recent-chat-row {

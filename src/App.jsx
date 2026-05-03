@@ -348,7 +348,17 @@ function App() {
       activeUserRef.current = user;
 
       let chats = await storage.getChats(user.id);
-      let activeChat = chats[0];
+
+      // Find an existing empty "Nuevo chat" to use as the active chat
+      let emptyNewChat = null;
+      for (const chat of chats) {
+        if (chat.title === 'Nuevo chat') {
+          const msgs = await storage.getMessages(chat.id);
+          if (!msgs || msgs.length === 0) { emptyNewChat = chat; break; }
+        }
+      }
+
+      let activeChat = emptyNewChat || chats[0];
 
       if (!activeChat) {
         activeChat = await storage.saveChat(user.id, {
@@ -697,13 +707,28 @@ function App() {
     window.setTimeout(() => { if (document.activeElement !== inputRef.current) setIsComposerFocused(false); }, 120);
   }
 
-  function handleClearChat() {
+  async function handleClearChat() {
     setMessages([]);
     nextId.current = 1;
     setIslandOpen(false);
     setIsGreetingWaveActive(false);
     hasPlayedGreetingRef.current = false;
     if (activeUserRef.current?.id) {
+      // Reuse an existing empty "Nuevo chat" if one already exists
+      const existingEmpty = recentChats.find(
+        (chat) => chat.title === 'Nuevo chat' && chat.id !== activeChatIdRef.current
+      );
+      if (existingEmpty) {
+        activeChatIdRef.current = existingEmpty.id;
+        setActiveChatId(existingEmpty.id);
+        return;
+      }
+      // Also check if the current chat is already empty (no messages)
+      const currentMessages = await storage.getMessages(activeChatIdRef.current);
+      const currentTitle = recentChats.find((c) => c.id === activeChatIdRef.current)?.title;
+      if ((!currentMessages || currentMessages.length === 0) && currentTitle === 'Nuevo chat') {
+        return; // Already on an empty new chat, nothing to do
+      }
       void storage.saveChat(activeUserRef.current.id, {
         id: `chat-${crypto.randomUUID()}`,
         title: 'Nuevo chat',
@@ -1486,6 +1511,23 @@ function App() {
           </div>
         </details>
 
+        <details className="sidebar-section" name="sidebar-menu">
+          <summary className="sidebar-section-summary">
+            <span>Atajos</span>
+            <svg className="sidebar-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </summary>
+          <div className="sidebar-section-body">
+            <ul className="shortcut-list">
+              <li className="shortcut-row"><span className="shortcut-desc">Limpiar chat</span><span className="shortcut-kbd"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>U</kbd></span></li>
+              <li className="shortcut-row"><span className="shortcut-desc">Memoria</span><span className="shortcut-kbd"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>K</kbd></span></li>
+              <li className="shortcut-row"><span className="shortcut-desc">Modo efímero</span><span className="shortcut-kbd"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>J</kbd></span></li>
+              <li className="shortcut-row"><span className="shortcut-desc">Selector modelo</span><span className="shortcut-kbd"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>L</kbd></span></li>
+            </ul>
+          </div>
+        </details>
+
         <details className="sidebar-section" open>
           <summary className="sidebar-section-summary">
             <span>Cuenta</span>
@@ -1541,7 +1583,7 @@ function App() {
             <span className="btn-icon"><IntentIcon name="clear" size={16} /></span>
             <div className="clear-chat-copy" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1 }}>
               <span>Nueva conversación</span>
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Ctrl+Shift+T</span>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Ctrl+Shift+U</span>
             </div>
           </button>
         </footer>
