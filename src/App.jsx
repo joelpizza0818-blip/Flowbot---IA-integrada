@@ -353,8 +353,12 @@ function App() {
       let emptyNewChat = null;
       for (const chat of chats) {
         if (chat.title === 'Nuevo chat') {
-          const msgs = await storage.getMessages(chat.id);
-          if (!msgs || msgs.length === 0) { emptyNewChat = chat; break; }
+          const rawMsgs = await storage.getMessages(chat.id);
+          const filteredMsgs = removeWelcomeMessages(rawMsgs);
+          if (!filteredMsgs || filteredMsgs.length === 0) { 
+            emptyNewChat = chat; 
+            break; 
+          }
         }
       }
 
@@ -722,8 +726,9 @@ function App() {
     // Check current chat first
     const currentChat = allChats.find(c => c.id === activeChatIdRef.current);
     if (currentChat?.title === 'Nuevo chat') {
-      const currentMsgs = await storage.getMessages(currentChat.id);
-      if (!currentMsgs || currentMsgs.length === 0) {
+      const rawMsgs = await storage.getMessages(currentChat.id);
+      const filteredMsgs = removeWelcomeMessages(rawMsgs);
+      if (!filteredMsgs || filteredMsgs.length === 0) {
         return; // Already on an empty new chat
       }
     }
@@ -731,10 +736,12 @@ function App() {
     // Check for any other empty "Nuevo chat"
     for (const chat of allChats) {
       if (chat.title === 'Nuevo chat') {
-        const msgs = await storage.getMessages(chat.id);
-        if (!msgs || msgs.length === 0) {
+        const rawMsgs = await storage.getMessages(chat.id);
+        const filteredMsgs = removeWelcomeMessages(rawMsgs);
+        if (!filteredMsgs || filteredMsgs.length === 0) {
           activeChatIdRef.current = chat.id;
           setActiveChatId(chat.id);
+          setMessages([]); // Clear current view
           return;
         }
       }
