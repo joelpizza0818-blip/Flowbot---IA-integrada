@@ -203,6 +203,7 @@ function App() {
   const [isEphemeralMode, setIsEphemeralMode] = useState(false);
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [proAlertOpen, setProAlertOpen] = useState(false);
   const [islandOpen, setIslandOpen] = useState(false);
   const [islandPosition, setIslandPosition] = useState(() => ({
     x: window.innerWidth <= MOBILE_BREAKPOINT
@@ -893,6 +894,16 @@ function App() {
     if (viewportMetrics.isCompact) setSidebarOpen(false);
   }
 
+  function handleSearchSubmit() {
+    if (!searchModalInput.trim()) return;
+    const url = searchModalType === 'youtube'
+      ? `https://www.youtube.com/results?search_query=${encodeURIComponent(searchModalInput)}`
+      : `https://www.google.com/search?q=${encodeURIComponent(searchModalInput)}`;
+    setNavigationUrl(url);
+    setSearchModalOpen(false);
+    setSearchModalInput('');
+  }
+
   function getActionSvg(actionId) {
     const p = { width:'24', height:'24', viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', strokeWidth:'2', strokeLinecap:'round', strokeLinejoin:'round' };
     switch (actionId) {
@@ -1106,6 +1117,23 @@ function App() {
     }
   }
 
+  const resetProFeatures = useCallback(() => {
+    setIsEphemeralMode(false);
+    setPreferredModel('auto');
+    setThinkingMode('normal');
+    setProAlertOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!chatBootstrapReady) return;
+    if (!hasActiveAccount) {
+      const isUsingPro = isEphemeralMode || preferredModel !== 'auto' || thinkingMode === 'deep';
+      if (isUsingPro && !proAlertOpen) {
+        setProAlertOpen(true);
+      }
+    }
+  }, [hasActiveAccount, isEphemeralMode, preferredModel, thinkingMode, proAlertOpen, chatBootstrapReady]);
+
   async function handleChangePassword(event) {
     event.preventDefault();
     if (!hasActiveAccount) return;
@@ -1199,23 +1227,60 @@ function App() {
 
       {/* Search modal */}
       {searchModalOpen && (
-        <div className="search-modal-overlay" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>
-          <div className="search-modal-content" onClick={(e) => e.stopPropagation()}>
-            <header className="search-modal-header">
-              <div>
-                <p className="modal-eyebrow">Búsqueda rápida</p>
-                <h3>{searchModalType === 'youtube' ? 'Abrir en YouTube' : 'Abrir en Google'}</h3>
+        <div className="timer-modal-overlay" onClick={() => setSearchModalOpen(false)}>
+          <div className="timer-modal-content" onClick={(e) => e.stopPropagation()}>
+            <header className="timer-modal-header">
+              <div className="timer-status-icon status-running">
+                {searchModalType === 'youtube' ? getActionSvg('open_youtube') : getActionSvg('open_search')}
               </div>
-              <button className="search-modal-close" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>X</button>
+              <div>
+                <p className="modal-eyebrow">Visualización</p>
+                <h3>{searchModalType === 'youtube' ? 'Buscar en YouTube' : 'Buscar en Google'}</h3>
+              </div>
             </header>
-            <div className="search-modal-body">
-              <input type="text" className="search-modal-input" placeholder={searchModalType === 'youtube' ? 'Busca un tutorial o video' : 'Busca una referencia, bug o librería'} value={searchModalInput} onChange={(e) => setSearchModalInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && searchModalInput.trim()) { const url = searchModalType === 'youtube' ? `https://www.youtube.com/results?search_query=${encodeURIComponent(searchModalInput)}` : `https://www.google.com/search?q=${encodeURIComponent(searchModalInput)}`; setNavigationUrl(url); setSearchModalOpen(false); setSearchModalInput(''); } }} autoFocus />
+            <div className="modal-body-input">
+              <input
+                type="text"
+                className="modal-input-field"
+                placeholder="¿Qué quieres buscar?"
+                value={searchModalInput}
+                onChange={(e) => setSearchModalInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSearchSubmit(); }}
+                autoFocus
+              />
             </div>
-            <footer className="search-modal-footer">
-              <button className="search-modal-cancel" onClick={() => { setSearchModalOpen(false); setSearchModalInput(''); }}>Cancelar</button>
-              <button className="search-modal-submit" onClick={() => { if (searchModalInput.trim()) { const url = searchModalType === 'youtube' ? `https://www.youtube.com/results?search_query=${encodeURIComponent(searchModalInput)}` : `https://www.google.com/search?q=${encodeURIComponent(searchModalInput)}`; setNavigationUrl(url); setSearchModalOpen(false); setSearchModalInput(''); } }} disabled={!searchModalInput.trim()}>
-                {searchModalType === 'youtube' ? 'Abrir YouTube' : 'Buscar'}
+            <footer className="timer-modal-footer">
+              <button className="timer-close-btn" onClick={() => setSearchModalOpen(false)}>Cancelar</button>
+              <button className="timer-close-btn confirm-btn" onClick={handleSearchSubmit}>Abrir</button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* PRO Protection Alert Modal */}
+      {proAlertOpen && (
+        <div className="timer-modal-overlay">
+          <div className="timer-modal-content pro-alert-content" onClick={(e) => e.stopPropagation()}>
+            <header className="timer-modal-header">
+              <div className="timer-status-icon pro-status-gold">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="modal-eyebrow" style={{ color: 'var(--accent-pro-gold)' }}>Acceso Restringido</p>
+                <h3>Función no disponible</h3>
+              </div>
+            </header>
+            <div className="modal-body-copy">
+              <p>Has intentado acceder a una función exclusiva de cuentas PRO hazte pro o vuelve a las funciones normales.</p>
+              <p style={{ marginTop: '0.5rem', opacity: 0.8, fontSize: '0.9rem' }}>
+                Para usar el modo efímero, seleccionar modelos específicos o usar pensamiento profundo, necesitas iniciar sesión con una cuenta activa.
+              </p>
+            </div>
+            <footer className="timer-modal-footer">
+              <button className="timer-close-btn pro-accept-btn" onClick={resetProFeatures}>
+                Entendido
               </button>
             </footer>
           </div>
@@ -1762,29 +1827,49 @@ function App() {
                     <p>{memorySummary}</p>
                   </article>
 
-                  <article className="hero-feature-card">
+                  <article className={`hero-feature-card ${!hasActiveAccount ? 'hero-feature-card-locked' : ''}`}>
                     <div className="hero-feature-topline">
                       <span className="hero-feature-label">Modelo</span>
-                      <span className="hero-feature-badge">{activeModelOption.label}</span>
+                      {!hasActiveAccount ? (
+                        <div className="hero-lock-badge">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
+                          <span>PRO</span>
+                        </div>
+                      ) : (
+                        <span className="hero-feature-badge">{activeModelOption.label}</span>
+                      )}
                     </div>
                     <strong>{activeModelOption.label}</strong>
-                    <p>{isCompactViewport ? 'Preferencia activa para responder.' : activeModelOption.desc}</p>
+                    <p>{!hasActiveAccount ? 'Inicia sesión para elegir entre Gemini, GPT y Llama.' : (isCompactViewport ? 'Preferencia activa para responder.' : activeModelOption.desc)}</p>
                   </article>
 
-                  <article className={`hero-feature-card ${isEphemeralMode ? 'hero-feature-card-active' : ''}`}>
+                  <article className={`hero-feature-card ${isEphemeralMode ? 'hero-feature-card-active' : ''} ${!hasActiveAccount ? 'hero-feature-card-locked' : ''}`}>
                     <div className="hero-feature-topline">
                       <span className="hero-feature-label">Efímero</span>
-                      <button
-                        type="button"
-                        className={`memory-toggle ${isEphemeralMode ? 'memory-toggle-on' : ''}`}
-                        aria-pressed={isEphemeralMode}
-                        onClick={() => setIsEphemeralMode((v) => !v)}
-                      >
-                        <span></span>
-                      </button>
+                      {!hasActiveAccount ? (
+                        <div className="hero-lock-badge">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
+                          <span>PRO</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`memory-toggle ${isEphemeralMode ? 'memory-toggle-on' : ''}`}
+                          aria-pressed={isEphemeralMode}
+                          onClick={() => setIsEphemeralMode((v) => !v)}
+                        >
+                          <span></span>
+                        </button>
+                      )}
                     </div>
                     <strong>{isEphemeralMode ? 'Vista única ON' : 'Vista única OFF'}</strong>
-                    <p>Los mensajes desaparecen por completo después de ser vistos.</p>
+                    <p>{!hasActiveAccount ? 'Inicia sesión para usar mensajes que desaparecen.' : 'Los mensajes desaparecen por completo después de ser vistos.'}</p>
                   </article>
                 </div>
               </section>
