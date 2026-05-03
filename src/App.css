@@ -2594,16 +2594,18 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-wrap: wrap; /* Permite que los botones bajen si no hay espacio */
 }
 
 .code-block-meta,
 .code-block-actions {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .code-view-toggle {
@@ -2622,15 +2624,20 @@ textarea {
 
 .code-toolbar-btn,
 .code-copy-btn {
-  padding: 8px 10px;
-  border-radius: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .code-toolbar-btn-active {
   background: rgba(102, 225, 255, 0.14);
-  color: var(--text-primary);
+  color: var(--accent);
+  box-shadow: 0 0 12px rgba(102, 225, 255, 0.1);
 }
 
 .code-toolbar-btn:hover,
@@ -2653,31 +2660,65 @@ textarea {
 
 .html-preview-shell-fullscreen {
   position: fixed;
-  inset: 18px;
-  z-index: 80;
+  inset: 0;
+  z-index: 1000;
   display: grid;
   grid-template-rows: auto 1fr;
   overflow: hidden;
-  border: 1px solid var(--line-strong);
-  border-radius: 18px;
-  background: #ffffff;
-  box-shadow: var(--shadow-elevated);
+  background: var(--bg-canvas);
+  animation: fullscreenIn 0.4s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+@keyframes fullscreenIn {
+  from { opacity: 0; transform: scale(0.96) translateY(20px); filter: blur(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
 }
 
 .html-preview-shell-fullscreen .html-preview-frame {
   height: 100%;
+  background: #ffffff; /* El contenido web suele necesitar fondo blanco */
+  border-radius: 24px 24px 0 0;
+  margin: 0 12px;
 }
 
 .html-preview-fullscreen-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(7, 11, 16, 0.96);
+  gap: 16px;
+  padding: 20px 24px;
+  background: transparent;
   color: var(--text-primary);
   font-weight: 700;
+  position: relative;
+}
+
+.fullscreen-mascot-container {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+}
+
+/* Ajustar el texto para que no se pegue al logo */
+.html-preview-fullscreen-toolbar span {
+  margin-left: 54px;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 600px) {
+  .fullscreen-mascot-container {
+    left: 12px;
+  }
+  .html-preview-fullscreen-toolbar span {
+    margin-left: 44px;
+    font-size: 0.9rem;
+  }
 }
 
 .code-block {
@@ -2703,6 +2744,162 @@ textarea {
 .code-token-keyword,
 .code-token-command { color: #7fb6ff; }
 .code-token-punctuation { color: #95a4b8; }
+
+/* ── Code Block Extensions: Console, Error, Fallback ─────────────────────── */
+.code-block-fallback-badge {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.code-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(255, 82, 82, 0.12);
+  border-bottom: 1px solid rgba(255, 82, 82, 0.2);
+  color: #ff9999;
+  font-size: 0.9rem;
+}
+
+.code-error-banner svg {
+  flex-shrink: 0;
+  stroke: #ff9999;
+}
+
+.console-panel {
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.console-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.console-message {
+  display: flex;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+
+.console-message:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.console-method {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.console-log .console-method {
+  background: rgba(102, 225, 255, 0.15);
+  color: #66e1ff;
+}
+
+.console-error .console-method {
+  background: rgba(255, 82, 82, 0.15);
+  color: #ff9999;
+}
+
+.console-warn .console-method {
+  background: rgba(255, 200, 87, 0.15);
+  color: #ffc857;
+}
+
+.console-info .console-method {
+  background: rgba(123, 191, 255, 0.15);
+  color: #7bbfff;
+}
+
+.console-debug .console-method {
+  background: rgba(150, 150, 150, 0.15);
+  color: #aaa;
+}
+
+.console-table .console-method {
+  background: rgba(180, 140, 255, 0.15);
+  color: #b48cff;
+}
+
+.console-content {
+  flex: 1;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.python-preview-shell {
+  min-height: 200px;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.python-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+}
+
+.python-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(102, 225, 255, 0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.python-output {
+  width: 100%;
+  padding: 24px;
+}
+
+.python-output-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(102, 225, 255, 0.08);
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.python-output-hint svg {
+  stroke: var(--accent);
+}
+
+.code-toolbar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ── Markdown Tables (Responsive) ────────────────────────────────────────── */
 .message-text table {

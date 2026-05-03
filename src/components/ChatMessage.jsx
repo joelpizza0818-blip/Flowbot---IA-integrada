@@ -1,5 +1,6 @@
 import React, { memo, useState, useEffect, useRef } from 'react';
 import IntentIcon from './IntentIcon';
+import FlowLogo from './FlowLogo';
 
 const ACTION_CONFIG = {
   open_youtube: {
@@ -89,6 +90,77 @@ const CSS_KEYWORDS = new Set([
 
 const BASH_KEYWORDS = new Set(['npm', 'pnpm', 'yarn', 'git', 'node', 'cd', 'ls', 'mkdir', 'echo', 'cat', 'curl']);
 
+class PyodideLoader {
+  constructor() {
+    this.pyodide = null;
+    this.loading = false;
+    this.loadPromise = null;
+  }
+
+  async load() {
+    if (this.pyodide) return this.pyodide;
+    if (this.loadPromise) return this.loadPromise;
+
+    this.loading = true;
+    this.loadPromise = (async () => {
+      try {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js';
+        document.head.appendChild(script);
+
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+        });
+
+        this.pyodide = await window.loadPyodide({
+          indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.25.0/full/',
+        });
+
+        this.loading = false;
+        return this.pyodide;
+      } catch (error) {
+        this.loading = false;
+        this.loadPromise = null;
+        throw error;
+      }
+    })();
+
+    return this.loadPromise;
+  }
+
+  async runPython(code) {
+    const pyodide = await this.load();
+    
+    const captureCode = `
+import sys
+from io import StringIO
+
+_stdout = StringIO()
+_stderr = StringIO()
+sys.stdout = _stdout
+sys.stderr = _stderr
+
+try:
+${code.split('\n').map(line => '    ' + line).join('\n')}
+except Exception as e:
+    import traceback
+    sys.stderr.write(traceback.format_exc())
+
+_stdout_value = _stdout.getvalue()
+_stderr_value = _stderr.getvalue()
+`;
+
+    await pyodide.runPythonAsync(captureCode);
+    const stdout = pyodide.runPython('_stdout_value');
+    const stderr = pyodide.runPython('_stderr_value');
+
+    return { stdout, stderr };
+  }
+}
+
+const pyodideLoader = new PyodideLoader();
+
 function normalizeLanguage(language = '') {
   const normalized = language.trim().toLowerCase();
   if (['js', 'jsx', 'ts', 'tsx', 'javascript', 'typescript'].includes(normalized)) return 'javascript';
@@ -96,7 +168,105 @@ function normalizeLanguage(language = '') {
   if (['css', 'scss'].includes(normalized)) return 'css';
   if (['json'].includes(normalized)) return 'json';
   if (['bash', 'sh', 'shell'].includes(normalized)) return 'bash';
+  if (['python', 'py'].includes(normalized)) return 'python';
   return normalized || 'plain';
+}
+
+function isExecutable(language) {
+  return ['html', 'javascript', 'python'].includes(language);
+}
+
+function wrapJavaScriptInHTML(jsCode) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaScript Preview</title>
+</head>
+<body>
+  <script>
+    (function() {
+      const methods = ['log', 'error', 'warn', 'info', 'debug', 'table'];
+      const original = {};
+      methods.forEach(method => {
+        original[method] = console[method];
+        console[method] = function(...args) {
+          original[method].apply(console, args);
+          window.parent.postMessage({
+            type: 'console',
+            method: method,
+            args: args.map(arg => {
+              try {
+                return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg);
+              } catch {
+                return String(arg);
+              }
+            }),
+            timestamp: Date.now()
+          }, '*');
+        };
+      });
+
+      window.onerror = function(message, source, lineno, colno, error) {
+        window.parent.postMessage({
+          type: 'error',
+          message: message,
+          timestamp: Date.now()
+        }, '*');
+        return false;
+      };
+    })();
+  </script>
+  <script>
+${jsCode}
+  </script>
+</body>
+</html>`;
+}
+
+function injectConsoleInterceptor(htmlCode) {
+  const interceptorScript = `<script>
+    (function() {
+      const methods = ['log', 'error', 'warn', 'info', 'debug', 'table'];
+      const original = {};
+      methods.forEach(method => {
+        original[method] = console[method];
+        console[method] = function(...args) {
+          original[method].apply(console, args);
+          window.parent.postMessage({
+            type: 'console',
+            method: method,
+            args: args.map(arg => {
+              try {
+                return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg);
+              } catch {
+                return String(arg);
+              }
+            }),
+            timestamp: Date.now()
+          }, '*');
+        };
+      });
+
+      window.onerror = function(message, source, lineno, colno, error) {
+        window.parent.postMessage({
+          type: 'error',
+          message: message,
+          timestamp: Date.now()
+        }, '*');
+        return false;
+      };
+    })();
+  </script>`;
+
+  if (/<\/head>/i.test(htmlCode)) {
+    return htmlCode.replace(/<\/head>/i, `${interceptorScript}</head>`);
+  }
+  if (/<body[^>]*>/i.test(htmlCode)) {
+    return htmlCode.replace(/<body[^>]*>/i, (match) => `${match}${interceptorScript}`);
+  }
+  return interceptorScript + htmlCode;
 }
 
 function detectLanguage(code, hint = '') {
@@ -212,6 +382,7 @@ function getLanguageLabel(language) {
     css: 'CSS',
     json: 'JSON',
     bash: 'Bash',
+    python: 'Python',
     plain: 'Code',
   };
   return labels[language] || language;
@@ -228,20 +399,156 @@ function parseCodeFence(rawContent) {
   };
 }
 
+function ConsolePanel({ messages }) {
+  const consoleRef = useRef(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+
+  useEffect(() => {
+    if (consoleRef.current && isAtBottom) {
+      consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+    }
+  }, [messages, isAtBottom]);
+
+  const handleScroll = () => {
+    if (consoleRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = consoleRef.current;
+      setIsAtBottom(scrollHeight - scrollTop - clientHeight < 10);
+    }
+  };
+
+  return (
+    <div className="console-panel" ref={consoleRef} onScroll={handleScroll}>
+      {messages.length === 0 ? (
+        <div className="console-empty">Consola vacía</div>
+      ) : (
+        messages.map((msg) => (
+          <div key={msg.id} className={`console-message console-${msg.method}`}>
+            <span className="console-method">{msg.method}</span>
+            <span className="console-content">{msg.content}</span>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
 function CodeBlock({ rawContent, enableHtmlPreview = true }) {
   const { language: hintedLanguage, code } = parseCodeFence(rawContent);
   const language = detectLanguage(code, hintedLanguage);
+  const executable = isExecutable(language) && enableHtmlPreview;
   const lineCount = code.split('\n').length;
   const [expanded, setExpanded] = useState(lineCount <= 14);
   const [copied, setCopied] = useState(false);
-  const [htmlView, setHtmlView] = useState('preview');
+  const [activeTab, setActiveTab] = useState('preview');
   const [fullscreen, setFullscreen] = useState(false);
-  const isHtmlPreview = enableHtmlPreview && hintedLanguage.trim().toLowerCase() === 'html';
+  const [consoleMessages, setConsoleMessages] = useState([]);
+  const [executing, setExecuting] = useState(false);
+  const [error, setError] = useState(null);
+  const [executionKey, setExecutionKey] = useState(0);
+  const isHtmlPreview = enableHtmlPreview && (hintedLanguage.trim().toLowerCase() === 'html' || language === 'html' || language === 'javascript');
+
+  const executePython = React.useCallback(async () => {
+    setExecuting(true);
+    setConsoleMessages([]);
+    setError(null);
+
+    try {
+      const { stdout, stderr } = await pyodideLoader.runPython(code.trim());
+
+      if (stdout) {
+        setConsoleMessages((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}-stdout`,
+            method: 'log',
+            content: stdout,
+            timestamp: Date.now(),
+          },
+        ]);
+      }
+
+      if (stderr) {
+        setError(stderr);
+        setConsoleMessages((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}-stderr`,
+            method: 'error',
+            content: stderr,
+            timestamp: Date.now(),
+          },
+        ]);
+      }
+    } catch (err) {
+      const errorMsg = err?.message || String(err) || 'Error ejecutando Python';
+      setError(errorMsg);
+      setConsoleMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-error`,
+          method: 'error',
+          content: errorMsg,
+          timestamp: Date.now(),
+        },
+      ]);
+    } finally {
+      setExecuting(false);
+    }
+  }, [code]);
+
+  useEffect(() => {
+    if (!executable || !expanded) return;
+
+    const handleMessage = (event) => {
+      if (event.data?.type === 'console') {
+        const { method, args, timestamp } = event.data;
+        setConsoleMessages((prev) => [
+          ...prev,
+          {
+            id: `${timestamp}-${Math.random()}`,
+            method,
+            content: args.join(' '),
+            timestamp,
+          },
+        ]);
+      } else if (event.data?.type === 'error') {
+        setError(event.data.message);
+        setConsoleMessages((prev) => [
+          ...prev,
+          {
+            id: `${event.data.timestamp}-${Math.random()}`,
+            method: 'error',
+            content: event.data.message,
+            timestamp: event.data.timestamp,
+          },
+        ]);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [executable, expanded, executionKey]);
+
+  useEffect(() => {
+    if (language === 'python' && expanded && executionKey === 0) {
+      executePython();
+    }
+  }, [language, expanded, executionKey, executePython]);
 
   function handleCopy() {
     navigator.clipboard.writeText(code.trim());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleRerun() {
+    setConsoleMessages([]);
+    setError(null);
+    setExecutionKey((k) => k + 1);
+    
+    if (language === 'python') {
+      executePython();
+    }
   }
 
   return (
@@ -250,65 +557,157 @@ function CodeBlock({ rawContent, enableHtmlPreview = true }) {
         <div className="code-block-meta">
           <span className="code-block-language">{getLanguageLabel(language)}</span>
           <span className="code-block-lines">{lineCount} lineas</span>
+          {!executable && expanded && (
+            <span className="code-block-fallback-badge">Preview no disponible</span>
+          )}
         </div>
         <div className="code-block-actions">
-          {isHtmlPreview && expanded && (
-            <div className="code-view-toggle" aria-label="Alternar vista HTML">
+          {executable && expanded ? (
+            <div className="code-view-toggle" aria-label="Alternar vista">
               <button
                 type="button"
-                className={`code-toolbar-btn ${htmlView === 'preview' ? 'code-toolbar-btn-active' : ''}`}
-                onClick={() => setHtmlView('preview')}
+                className={`code-toolbar-btn ${activeTab === 'preview' ? 'code-toolbar-btn-active' : ''}`}
+                onClick={() => setActiveTab('preview')}
               >
                 Preview
               </button>
               <button
                 type="button"
-                className={`code-toolbar-btn ${htmlView === 'code' ? 'code-toolbar-btn-active' : ''}`}
-                onClick={() => setHtmlView('code')}
+                className={`code-toolbar-btn ${activeTab === 'code' ? 'code-toolbar-btn-active' : ''}`}
+                onClick={() => setActiveTab('code')}
+              >
+                Código
+              </button>
+              <button
+                type="button"
+                className={`code-toolbar-btn ${activeTab === 'console' ? 'code-toolbar-btn-active' : ''}`}
+                onClick={() => setActiveTab('console')}
+              >
+                Consola
+              </button>
+            </div>
+          ) : isHtmlPreview && expanded ? (
+            <div className="code-view-toggle" aria-label="Alternar vista HTML">
+              <button
+                type="button"
+                className={`code-toolbar-btn ${activeTab === 'preview' ? 'code-toolbar-btn-active' : ''}`}
+                onClick={() => setActiveTab('preview')}
+              >
+                Preview
+              </button>
+              <button
+                type="button"
+                className={`code-toolbar-btn ${activeTab === 'code' ? 'code-toolbar-btn-active' : ''}`}
+                onClick={() => setActiveTab('code')}
               >
                 Código
               </button>
             </div>
-          )}
+          ) : null}
           {isHtmlPreview && expanded && (
             <button type="button" className="code-toolbar-btn" onClick={() => setFullscreen((value) => !value)}>
               {fullscreen ? 'Cerrar' : 'Pantalla'}
             </button>
           )}
+          {executable && expanded && (
+            <button type="button" className="code-toolbar-btn" onClick={handleRerun} disabled={executing}>
+              {executing ? '...' : 'Correr'}
+            </button>
+          )}
           <button type="button" className="code-toolbar-btn" onClick={() => setExpanded((value) => !value)}>
-            {expanded ? 'Ocultar' : 'Expandir'}
+            {expanded ? 'Ocultar' : 'Ver'}
           </button>
           <button type="button" className="code-copy-btn" onClick={handleCopy}>
-            {copied ? 'Copiado' : 'Copiar'}
+            {copied ? 'Listo' : 'Copiar'}
           </button>
         </div>
       </div>
 
+      {expanded && error && (
+        <div className="code-error-banner">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{error}</span>
+        </div>
+      )}
+
       {expanded && (
-        isHtmlPreview && htmlView === 'preview' ? (
-          <div className={`html-preview-shell ${fullscreen ? 'html-preview-shell-fullscreen' : ''}`}>
-            {fullscreen && (
-              <div className="html-preview-fullscreen-toolbar">
-                <span>Preview HTML</span>
-                <button type="button" className="code-toolbar-btn" onClick={() => setFullscreen(false)}>
-                  Cerrar
-                </button>
+        <>
+          {executable && activeTab === 'preview' ? (
+            language === 'python' ? (
+              <div className="python-preview-shell">
+                {executing ? (
+                  <div className="python-loading">
+                    <div className="python-loading-spinner"></div>
+                    <span>Ejecutando Python...</span>
+                  </div>
+                ) : (
+                  <div className="python-output">
+                    <div className="python-output-hint">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="4 17 10 11 4 5" />
+                        <line x1="12" y1="19" x2="20" y2="19" />
+                      </svg>
+                      <span>Salida en la pestaña Consola</span>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-            <iframe
-              className="html-preview-frame"
-              title="Vista previa HTML"
-              sandbox="allow-scripts"
-              srcDoc={code.trim()}
-            />
-          </div>
-        ) : (
-          <pre className="code-block">
-            <code className={`code-content language-${language}`}>
-              {renderHighlightedCode(code.trim(), language)}
-            </code>
-          </pre>
-        )
+            ) : (
+              <div className={`html-preview-shell ${fullscreen ? 'html-preview-shell-fullscreen' : ''}`}>
+                {fullscreen && (
+                  <div className="html-preview-fullscreen-toolbar">
+                    <div className="fullscreen-mascot-container">
+                      <FlowLogo size={48} mood="excited" trackCursor={true} />
+                    </div>
+                    <span>Preview Interactiva</span>
+                    <button type="button" className="code-toolbar-btn" onClick={() => setFullscreen(false)}>
+                      Cerrar Vista
+                    </button>
+                  </div>
+                )}
+                <iframe
+                  key={executionKey}
+                  className="html-preview-frame"
+                  title="Vista previa"
+                  sandbox="allow-scripts allow-modals"
+                  srcDoc={language === 'javascript' ? wrapJavaScriptInHTML(code.trim()) : injectConsoleInterceptor(code.trim())}
+                />
+              </div>
+            )
+          ) : executable && activeTab === 'console' ? (
+            <ConsolePanel messages={consoleMessages} />
+          ) : isHtmlPreview && activeTab === 'preview' ? (
+            <div className={`html-preview-shell ${fullscreen ? 'html-preview-shell-fullscreen' : ''}`}>
+              {fullscreen && (
+                <div className="html-preview-fullscreen-toolbar">
+                  <div className="fullscreen-mascot-container">
+                    <FlowLogo size={48} mood="celebrating" trackCursor={true} />
+                  </div>
+                  <span>Vista Previa HTML</span>
+                  <button type="button" className="code-toolbar-btn" onClick={() => setFullscreen(false)}>
+                    Cerrar Vista
+                  </button>
+                </div>
+              )}
+              <iframe
+                className="html-preview-frame"
+                title="Vista previa HTML"
+                sandbox="allow-scripts"
+                srcDoc={code.trim()}
+              />
+            </div>
+          ) : (
+            <pre className="code-block">
+              <code className={`code-content language-${language}`}>
+                {renderHighlightedCode(code.trim(), language)}
+              </code>
+            </pre>
+          )}
+        </>
       )}
     </div>
   );

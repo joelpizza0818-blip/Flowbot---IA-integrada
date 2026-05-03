@@ -327,7 +327,7 @@ function App() {
         const nextAvailability = await checkBackendAvailability(2200, 0);
         if (!mounted) return;
         setBackendAvailable(Boolean(nextAvailability.backendAvailable));
-      }, 10000);
+      }, 5000);
     })();
 
     return () => {
@@ -950,6 +950,7 @@ function App() {
   const visibleMessages = messages;
   const hasActiveAccount = Boolean(backendAvailable && authUser?.id && !authUser?.isGuest);
   const canSelectModel = hasActiveAccount;
+  const canUseDeepThinking = hasActiveAccount;
   const effectiveContextWindowSize = CONTEXT_WINDOW_SIZE + (hasActiveAccount ? ACCOUNT_MEMORY_BONUS : 0);
   const { usedSlots: displayedContextSlots } = getContextUsage(messages, effectiveContextWindowSize);
   const liveStatusItems = [envInfo, connectivityInfo];
@@ -1355,8 +1356,8 @@ function App() {
                   </svg>
                 </div>
                 <div className="benefit-copy">
-                  <strong>Selección manual de modelo</strong>
-                  <span>Elige entre Gemini 3.1, GPT OSS, Llama y mas. Sin cuenta solo puedes usar el modo automático.</span>
+                  <strong>Modelos y Pensamiento Avanzado</strong>
+                  <span>Acceso a Gemini 1.5 Pro y modo de "Pensamiento Profundo" para resolver problemas complejos paso a paso.</span>
                 </div>
               </li>
               <li className="benefit-item benefit-item-modal">
@@ -1879,26 +1880,51 @@ function App() {
               <div className="input-selectors">
                 <div className="selector-wrapper">
                   <button
-                    className={`selector-btn ${thinkingMode !== 'normal' ? 'selector-btn-active' : ''}`}
+                    className={`selector-btn ${thinkingMode !== 'normal' ? 'selector-btn-active' : ''} ${thinkingMode === 'deep' && !canUseDeepThinking ? 'selector-btn-locked' : ''}`}
                     onClick={(e) => { e.stopPropagation(); setThinkingDropdownOpen((value) => !value); setModelDropdownOpen(false); }}
-                    title="Modo de pensamiento"
+                    title={thinkingMode === 'deep' && !canUseDeepThinking ? 'Inicia sesión para usar Pensamiento Profundo' : 'Modo de pensamiento'}
                   >
-                    <ThinkingModeIcon mode={thinkingMode} size={14} />
+                    {thinkingMode === 'deep' && !canUseDeepThinking ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="selector-lock-icon">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    ) : (
+                      <ThinkingModeIcon mode={thinkingMode} size={14} />
+                    )}
                     <span className="selector-label">{activeThinkingOption.label}</span>
-                    <svg className="selector-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
+                    {thinkingMode === 'deep' && !canUseDeepThinking ? (
+                      <span className="selector-lock-hint">PRO</span>
+                    ) : (
+                      <svg className="selector-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    )}
                   </button>
                   {thinkingDropdownOpen && (
                     <div className="selector-dropdown" onClick={(e) => e.stopPropagation()}>
                       {thinkingOptions.map((option) => (
-                        <button key={option.id} className={`dropdown-option ${thinkingMode === option.id ? 'dropdown-option-active' : ''}`} onClick={() => { setThinkingMode(option.id); setThinkingDropdownOpen(false); }}>
+                        <button
+                          key={option.id}
+                          className={`dropdown-option ${thinkingMode === option.id ? 'dropdown-option-active' : ''} ${option.id === 'deep' && !canUseDeepThinking ? 'sidebar-mode-locked' : ''}`}
+                          onClick={() => {
+                            if (option.id === 'deep' && !canUseDeepThinking) return;
+                            setThinkingMode(option.id);
+                            setThinkingDropdownOpen(false);
+                          }}
+                        >
                           <ThinkingModeIcon mode={option.id} size={15} />
                           <div className="dropdown-option-text">
                             <span className="dropdown-option-label">{option.label}</span>
                             <span className="dropdown-option-desc">{option.desc}</span>
                           </div>
                           {thinkingMode === option.id && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>}
+                          {option.id === 'deep' && !canUseDeepThinking && (
+                            <svg className="sidebar-mode-lock" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                          )}
                         </button>
                       ))}
                     </div>
