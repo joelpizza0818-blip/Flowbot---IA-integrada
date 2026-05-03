@@ -1370,6 +1370,7 @@ function App() {
 
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+        <div className="sidebar-scroll">
         <header className="sidebar-header">
           <div className="sidebar-brand">
             <FlowLogo size={34} />
@@ -1578,6 +1579,7 @@ function App() {
           </div>
         </details>
 
+        </div>{/* end sidebar-scroll */}
         <footer className="sidebar-footer">
           <button className="clear-chat-btn" onClick={handleClearChat}>
             <span className="btn-icon"><IntentIcon name="clear" size={16} /></span>

@@ -1033,21 +1033,29 @@ textarea {
   max-width: calc(100vw - 24px);
   transform: translateX(-100%);
   transition: transform var(--transition-base);
-  padding: 24px 18px 90px;
-  display: block;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid var(--line-soft);
   background: linear-gradient(180deg, rgba(8, 12, 17, 0.95), rgba(8, 12, 17, 0.84));
   backdrop-filter: blur(18px);
-  overflow-y: auto;
   box-shadow: var(--shadow-elevated);
-}
-
-.sidebar > * + * {
-  margin-top: 16px;
 }
 
 .sidebar.sidebar-open {
   transform: translateX(0);
+}
+
+.sidebar-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 18px 8px;
+}
+
+.sidebar-scroll > * + * {
+  margin-top: 16px;
 }
 
 .sidebar-header,
@@ -1681,15 +1689,11 @@ textarea {
 }
 
 .sidebar-footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: var(--sidebar-width);
-  max-width: calc(100vw - 24px);
+  flex-shrink: 0;
   padding: 16px 18px 18px;
   background: linear-gradient(180deg, transparent, rgba(8, 12, 17, 0.97) 28%);
-  z-index: 1;
 }
+
 
 .sidebar-overlay {
   position: fixed;
