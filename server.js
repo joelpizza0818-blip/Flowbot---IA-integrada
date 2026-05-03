@@ -306,7 +306,7 @@ async function listMessages(chatId) {
 }
 
 async function saveMessage({ id, chatId, sender, text }) {
-  const role = sender === 'assistant' ? 'assistant' : (sender || 'user');
+  const role = (sender === 'assistant' || sender === 'bot') ? 'assistant' : (sender || 'user');
   const content = text || '';
   const pool = await getDbPool();
   if (!pool) {

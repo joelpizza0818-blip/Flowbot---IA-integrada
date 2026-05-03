@@ -82,7 +82,7 @@ function randomBetween(min, max) {
 
 function isWelcomeMessage(message) {
   return (
-    message?.sender === 'bot' &&
+    (message?.sender === 'bot' || message?.sender === 'assistant') &&
     (message.id === 0 || message.id === '0') &&
     typeof message.text === 'string' &&
     message.text.includes('Bienvenido a FlowBot')
@@ -649,7 +649,7 @@ function App() {
 
         const botMsg = {
           id:            createMessageId(),
-          sender:        'bot',
+          sender:        'assistant',
           text:          response.text,
           iconName:      response.iconName,
           intents:       response.intents,
@@ -674,7 +674,7 @@ function App() {
         console.error('Error generating bot response:', error);
         const fallbackMsg = {
           id: createMessageId(),
-          sender: 'bot',
+          sender: 'assistant',
           text: 'Tuve un problema temporal al generar la respuesta. Intenta de nuevo en unos segundos.',
           iconName: 'alert',
           intents: [],

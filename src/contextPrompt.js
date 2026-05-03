@@ -19,7 +19,7 @@ function normalizeConversationHistory(conversationHistory = []) {
     ? conversationHistory
       .filter((message) => {
         const hasText = typeof message?.text === 'string' && message.text.trim();
-        const hasValidSender = message?.sender === 'user' || message?.sender === 'bot';
+        const hasValidSender = message?.sender === 'user' || message?.sender === 'bot' || message?.sender === 'assistant';
         return hasText && hasValidSender;
       })
       .map((message) => ({
